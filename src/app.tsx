@@ -22,6 +22,7 @@ import { HashRouter, Route, Routes, useNavigate } from "react-router";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import Scout from "./pages/Scout";
+import { useTheme } from "@mui/material/styles";
 
 const pages = [
   { text: "Home", icon: <HomeIcon />, component: <Home />, path: "/" },
@@ -44,10 +45,14 @@ const pages = [
 function Layout({ children }: { children: React.ReactNode }) {
   const { drawerOpen, toggleDrawer } = useDrawer();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   return (
     <>
-      <AppBar position="sticky" color="primary">
+      <AppBar
+        position="sticky"
+        sx={{ backgroundColor: theme.palette.primary.main }}
+      >
         <Toolbar>
           <IconButton
             size="large"
@@ -67,7 +72,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <Drawer open={drawerOpen} onClose={toggleDrawer(false)}>
         <Box
           sx={{
-            width: 250,
+            width: '25vw',
             height: "100%",
             display: "flex",
             flexDirection: "column",
@@ -81,7 +86,12 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <ListItem key={item.text} disablePadding>
                   <ListItemButton onClick={() => navigate(item.path)}>
                     <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.text} />
+                    <ListItemText
+                      disableTypography
+                      primary={
+                        <Typography variant="h6">{item.text}</Typography>
+                      }
+                    />
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -94,7 +104,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   <ListItemIcon>
                     <SettingsIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Settings" />
+                  <Typography variant="h6">Settings</Typography>
                 </ListItemButton>
               </ListItem>
             </List>
