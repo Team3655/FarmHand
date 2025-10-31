@@ -35,9 +35,7 @@ export default function InputCard(props: InputCardProps) {
         p: 2,
         minWidth: "fit-content",
         height: "100%",
-        backgroundColor: valid
-          ? theme.palette.background.paper
-          : theme.palette.error.light,
+        backgroundColor: theme.palette.background.paper,
         transition: "border-color 0.2s ease, background-color 0.2s ease",
         alignContent: "center",
       }}

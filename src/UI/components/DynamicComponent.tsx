@@ -17,13 +17,13 @@ export default function DynamicComponent({
 }) {
   const { updateValidation } = useValidation();
   const handleChange = (newValue: any) => {
-    if (!newValue) {
+    if (!newValue && component.required) {
       updateValidation(false);
     } else {
       updateValidation(true);
     }
 
-    // TODO: Add logic for handling specific invalid operations and only checking invalid stuff if its required
+    // TODO: Add logic for handling specific invalid operations
   };
 
   const renderInput = () => {
@@ -65,7 +65,7 @@ export default function DynamicComponent({
   };
 
   return (
-    <InputCard label={component.name} required={false}>
+    <InputCard label={component.name} required={component.required ?? false}>
       {renderInput()}
     </InputCard>
   );

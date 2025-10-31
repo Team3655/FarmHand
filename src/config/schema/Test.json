@@ -6,6 +6,7 @@
         {
           "name": "Score counter",
           "type": "counter",
+          "required": true,
           "props": {
             "default": 0
           }
@@ -28,6 +29,7 @@
         {
           "name": "Write something",
           "type": "text",
+          "required": true,
           "props": {
             "label": "Text field",
             "multiline": true

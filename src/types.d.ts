@@ -15,6 +15,7 @@ interface SectionData {
 interface Component {
   name: string;
   type: string;
+  required?: boolean;
   props?: ComponentProps;
 }
 

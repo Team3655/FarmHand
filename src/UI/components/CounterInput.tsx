@@ -21,7 +21,6 @@ interface CounterInputProps {
  */
 export default function CounterInput(props: CounterInputProps) {
   const { max, min, defaultValue, onChange } = props;
-  const { valid } = useValidation();
   const [count, setCount] = useState(defaultValue ?? 0);
 
   const increment = () => {
@@ -47,7 +46,7 @@ export default function CounterInput(props: CounterInputProps) {
       <Button
         onClick={decrement}
         variant="contained"
-        color={valid ? "inherit" : "error"}
+        color="inherit"
         sx={{
           aspectRatio: "1/1",
         }}
@@ -59,7 +58,7 @@ export default function CounterInput(props: CounterInputProps) {
       <Button
         onClick={increment}
         variant="contained"
-        color={valid ? "inherit" : "error"}
+        color="inherit"
         sx={{ aspectRatio: "1/1" }}
         disableElevation
       >
