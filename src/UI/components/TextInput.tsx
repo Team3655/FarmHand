@@ -1,5 +1,6 @@
 import { Box, TextField } from "@mui/material";
 import { ChangeEvent, useState } from "react";
+import useValidation from "../../hooks/useValidation";
 
 /**
  * Props for the text input component
@@ -7,7 +8,6 @@ import { ChangeEvent, useState } from "react";
 interface TextInputProps {
   label?: string;
   multiline?: boolean;
-  valid?: boolean;
   onChange?: (value: string) => void;
 }
 
@@ -19,8 +19,8 @@ interface TextInputProps {
  */
 export default function TextInput(props: TextInputProps) {
   const [text, setText] = useState("");
-
-  const { label, multiline, valid, onChange } = props;
+  const { valid } = useValidation();
+  const { label, multiline, onChange } = props;
 
   const updateText = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -33,7 +33,7 @@ export default function TextInput(props: TextInputProps) {
       <TextField
         variant="outlined"
         multiline={multiline ?? false}
-        color='secondary'
+        color="secondary"
         fullWidth
         label={label}
         onChange={updateText}

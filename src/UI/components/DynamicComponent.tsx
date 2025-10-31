@@ -4,14 +4,26 @@ import InputCard from "../InputCard";
 import DropdownInput from "./DropdownInput";
 import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
+import useValidation from "../../hooks/useValidation";
 
 /**
  * Component that renders a component based on its type
  *
  */
-export default function DynamicComponent({component}: {component: Component}) {
+export default function DynamicComponent({
+  component,
+}: {
+  component: Component;
+}) {
+  const { updateValidation } = useValidation();
   const handleChange = (newValue: any) => {
-    // Eventually add logic for validation check and state saving
+    if (!newValue) {
+      updateValidation(false);
+    } else {
+      updateValidation(true);
+    }
+
+    // TODO: Add logic for handling specific invalid operations and only checking invalid stuff if its required
   };
 
   const renderInput = () => {
@@ -22,7 +34,6 @@ export default function DynamicComponent({component}: {component: Component}) {
             defaultValue={component.props?.default as number}
             max={component.props?.max!}
             min={component.props?.min!}
-            valid={true}
             onChange={handleChange}
           />
         );
@@ -32,19 +43,17 @@ export default function DynamicComponent({component}: {component: Component}) {
           <DropdownInput
             options={component.props?.options!}
             onChange={handleChange}
-            valid={true}
             label={component.props?.label}
           />
         );
 
       case "checkbox":
-        return <CheckboxInput onChange={handleChange} valid={true} />;
+        return <CheckboxInput onChange={handleChange} />;
 
       case "text":
         return (
           <TextInput
             onChange={handleChange}
-            valid={true}
             multiline={component.props?.multiline!}
             label={component.props?.label}
           />
@@ -56,7 +65,7 @@ export default function DynamicComponent({component}: {component: Component}) {
   };
 
   return (
-    <InputCard label={component.name} required={false} valid={true}>
+    <InputCard label={component.name} required={false}>
       {renderInput()}
     </InputCard>
   );

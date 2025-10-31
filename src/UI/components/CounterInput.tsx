@@ -2,6 +2,7 @@ import { Button, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/AddRounded";
 import RemoveIcon from "@mui/icons-material/RemoveRounded";
 import { useState } from "react";
+import useValidation from "../../hooks/useValidation";
 
 /**
  * Props for the counter
@@ -10,7 +11,6 @@ interface CounterInputProps {
   max?: number;
   min?: number;
   defaultValue?: number;
-  valid?: boolean;
   onChange?: (value: number) => void;
 }
 
@@ -20,8 +20,8 @@ interface CounterInputProps {
  * @returns A component that functions similarly to an HTML native number input
  */
 export default function CounterInput(props: CounterInputProps) {
-  const { max, min, defaultValue, valid, onChange } = props;
-
+  const { max, min, defaultValue, onChange } = props;
+  const { valid } = useValidation();
   const [count, setCount] = useState(defaultValue ?? 0);
 
   const increment = () => {
@@ -40,9 +40,8 @@ export default function CounterInput(props: CounterInputProps) {
   return (
     <Stack
       direction={"row"}
-      spacing={2}
       alignItems={"center"}
-      justifyContent={"space-between"}
+      justifyContent={"space-around"}
       width={"70%"}
     >
       <Button

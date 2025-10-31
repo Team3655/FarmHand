@@ -1,6 +1,8 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { ReactNode } from "react";
+import ValidationProvider from "../context/ValidationContext";
+import useValidation from "../hooks/useValidation";
 
 /**
  * Props for InputCard
@@ -8,19 +10,18 @@ import { ReactNode } from "react";
 interface InputCardProps {
   label: string;
   required: boolean;
-  valid: boolean;
   errorMessage?: string;
   children: ReactNode;
 }
 
 /**
  *
- *
  * @param props {@link InputCardProps}
  * @returns A Card wrapper for all the input components
  */
 export default function InputCard(props: InputCardProps) {
-  const { label, required, valid, errorMessage, children } = props;
+  const { label, required, errorMessage, children } = props;
+  const {valid, updateValidation} = useValidation();
   const theme = useTheme();
 
   return (
@@ -31,16 +32,14 @@ export default function InputCard(props: InputCardProps) {
         borderWidth: 2,
         borderStyle: "solid",
         borderRadius: 2,
-        p: 1.5,
+        p: 2,
         minWidth: "fit-content",
-        height: '100%',
+        height: "100%",
         backgroundColor: valid
           ? theme.palette.background.paper
           : theme.palette.error.light,
         transition: "border-color 0.2s ease, background-color 0.2s ease",
-        mx: 2,
-        my: 2,
-        alignContent: 'center'
+        alignContent: "center",
       }}
     >
       <CardContent
@@ -49,7 +48,6 @@ export default function InputCard(props: InputCardProps) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          p: 1,
         }}
       >
         {!valid && (

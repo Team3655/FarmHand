@@ -8,7 +8,6 @@ import CloseIcon from "@mui/icons-material/CloseRounded";
  */
 interface CheckboxInputProps {
   defaultValue?: boolean;
-  valid?: boolean;
   onChange?: (value: boolean) => void;
 }
 
@@ -20,13 +19,9 @@ interface CheckboxInputProps {
  */
 export default function CheckboxInput(props: CheckboxInputProps) {
   const { defaultValue, onChange } = props;
-
   const [active, setActive] = useState(defaultValue ?? false);
 
-  let valid = props.valid;
-  if (valid === null) {
-    valid = true;
-  }
+
   const toggleActive = () => {
     const newValue = !active;
     setActive(newValue);

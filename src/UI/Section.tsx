@@ -1,5 +1,6 @@
-import { Card, Grid, Stack, Typography } from "@mui/material";
+import { Card, Grid, Typography } from "@mui/material";
 import DynamicComponent from "./components/DynamicComponent";
+import ValidationProvider from "../context/ValidationContext";
 
 /**
  * Props for the section component
@@ -14,27 +15,26 @@ export default function Section(props: SectionProps) {
   return (
     <Card
       sx={{
-        p: 1.5,
+        p: 3,
         minWidth: "fit-content",
         height: "100%",
+        display: "flex",
+        alignContent: "center",
+        flexDirection: "column",
       }}
     >
-      <Stack
-        direction={"column"}
-        width={"100%"}
-        justifyContent={"space-between"}
-        alignContent={"center"}
-        sx={{ px: 2, py: 3 }}
-      >
-        <Typography variant="h5">{section.title}</Typography>
-        <Grid container spacing={2}>
-          {section.fields.map((component, index) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
+      <Typography variant="h5" sx={{ my: 2, mx: 1 }}>
+        {section.title}
+      </Typography>
+      <Grid container spacing={2}>
+        {section.fields.map((component, index) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
+            <ValidationProvider>
               <DynamicComponent component={component} />
-            </Grid>
-          ))}
-        </Grid>
-      </Stack>
+            </ValidationProvider>
+          </Grid>
+        ))}
+      </Grid>
     </Card>
   );
 }

@@ -6,6 +6,7 @@ import {
   FormControl,
 } from "@mui/material";
 import { useState } from "react";
+import useValidation from "../../hooks/useValidation";
 
 /**
  * Props for the dropdown input
@@ -13,7 +14,6 @@ import { useState } from "react";
 interface DropdownInputProps {
   label?: string;
   options: string[];
-  valid?: boolean;
   onChange?: (value: string) => void;
 }
 
@@ -22,8 +22,8 @@ interface DropdownInputProps {
  * @returns Dropdown input for the page
  */
 export default function DropdownInput(props: DropdownInputProps) {
-  const { label, options, valid, onChange } = props;
-
+  const { label, options, onChange } = props;
+  const { valid } = useValidation();
   const [option, setOption] = useState("");
 
   const handleChange = (e: SelectChangeEvent) => {
