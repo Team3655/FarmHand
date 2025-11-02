@@ -5,6 +5,8 @@ import DropdownInput from "./DropdownInput";
 import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
 import useValidation from "../../hooks/useValidation";
+import useScoutData from "../../hooks/useScoutData";
+import { useEffect } from "react";
 
 /**
  * Component that renders a component based on its type
@@ -15,16 +17,68 @@ export default function DynamicComponent({
 }: {
   component: Component;
 }) {
-  const { updateValidation } = useValidation();
+  const { setValid, setTouched } = useValidation();
+  const { addMatchData, addError, removeError } = useScoutData();
+
   const handleChange = (newValue: any) => {
-    if (!newValue && component.required) {
-      updateValidation(false);
+    setTouched(true);
+    const isInvalid =
+      component.required &&
+      (newValue === "" ||
+        (component.type === "checkbox" && !newValue) ||
+        (component.type === "counter" &&
+          newValue === component.props?.default));
+
+    setValid(!isInvalid);
+    if (isInvalid) {
+      addError(component.name);
     } else {
-      updateValidation(true);
+      removeError(component.name);
     }
 
-    // TODO: Add logic for handling specific invalid operations
+    addMatchData(component.name, newValue);
   };
+
+  useEffect(() => {
+    let initialValue: any;
+
+    switch (component.type) {
+      case "checkbox":
+        initialValue = component.props?.default ?? false;
+        break;
+      case "text":
+      case "dropdown":
+        initialValue = component.props?.default ?? "";
+        break;
+      case "counter":
+        initialValue = component.props?.default ?? 0;
+        break;
+      default:
+        break;
+    }
+
+    addMatchData(component.name, initialValue);
+
+    if (component.required) {
+      const isInvalid =
+        initialValue === "" ||
+        (component.type === "checkbox" && initialValue === false) ||
+        (component.type === "counter" &&
+          initialValue === component.props?.default) ||
+        initialValue === 0;
+
+      setValid(!isInvalid);
+      if (isInvalid) {
+        addError(component.name);
+      }
+    }
+
+    return () => {
+      if (component.required!) {
+        removeError(component.name);
+      }
+    };
+  }, []);
 
   const renderInput = () => {
     switch (component.type) {

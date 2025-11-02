@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import useValidation from "../../hooks/useValidation";
+import useScoutData from "../../hooks/useScoutData";
 
 /**
  * Props for the dropdown input
@@ -23,7 +24,9 @@ interface DropdownInputProps {
  */
 export default function DropdownInput(props: DropdownInputProps) {
   const { label, options, onChange } = props;
-  const { valid } = useValidation();
+  const { valid, touched } = useValidation();
+  const { submitted } = useScoutData();
+  const showError = !valid && (touched || submitted);
   const [option, setOption] = useState("");
 
   const handleChange = (e: SelectChangeEvent) => {
@@ -35,7 +38,7 @@ export default function DropdownInput(props: DropdownInputProps) {
     <FormControl sx={{ width: "70%" }}>
       <InputLabel
         id="demo-simple-select-label"
-        color={valid ? "secondary" : "error"}
+        color={showError ? "error" : "secondary"}
       >
         {label}
       </InputLabel>
@@ -46,7 +49,7 @@ export default function DropdownInput(props: DropdownInputProps) {
         label={label}
         onChange={handleChange}
         color="secondary"
-        error={!valid}
+        error={showError}
         sx={{
           "& legend": {
             transition: "unset",

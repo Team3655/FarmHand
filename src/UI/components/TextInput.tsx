@@ -1,6 +1,7 @@
 import { Box, TextField } from "@mui/material";
 import { ChangeEvent, useState } from "react";
 import useValidation from "../../hooks/useValidation";
+import useScoutData from "../../hooks/useScoutData";
 
 /**
  * Props for the text input component
@@ -19,7 +20,10 @@ interface TextInputProps {
  */
 export default function TextInput(props: TextInputProps) {
   const [text, setText] = useState("");
-  const { valid } = useValidation();
+  const { valid, touched } = useValidation();
+  const { submitted } = useScoutData();
+  const showError = !valid && (touched || submitted);
+
   const { label, multiline, onChange } = props;
 
   const updateText = (e: ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +42,7 @@ export default function TextInput(props: TextInputProps) {
         label={label}
         onChange={updateText}
         value={text}
-        error={!valid}
+        error={showError}
         sx={{
           "& legend": {
             transition: "unset",

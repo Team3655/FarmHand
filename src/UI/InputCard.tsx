@@ -2,6 +2,7 @@ import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { ReactNode } from "react";
 import useValidation from "../hooks/useValidation";
+import useScoutData from "../hooks/useScoutData";
 
 /**
  * Props for InputCard
@@ -20,14 +21,19 @@ interface InputCardProps {
  */
 export default function InputCard(props: InputCardProps) {
   const { label, required, errorMessage, children } = props;
-  const { valid } = useValidation();
+  const { valid, touched } = useValidation();
+  const { submitted } = useScoutData();
   const theme = useTheme();
+
+  const showError = required && !valid && (touched || submitted);
 
   return (
     <Card
       variant="outlined"
       sx={{
-        borderColor: valid ? theme.palette.divider : theme.palette.error.main,
+        borderColor: showError
+          ? theme.palette.error.main
+          : theme.palette.divider,
         borderWidth: 2,
         borderStyle: "solid",
         borderRadius: 2,
@@ -47,7 +53,7 @@ export default function InputCard(props: InputCardProps) {
           justifyContent: "center",
         }}
       >
-        {!valid && (
+        {showError && (
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             {errorMessage ?? "This field is required"}
           </Typography>
