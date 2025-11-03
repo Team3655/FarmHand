@@ -6,21 +6,28 @@ import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
 import useValidation from "../../hooks/useValidation";
 import useScoutData from "../../hooks/useScoutData";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+/**
+ * Props for the dynamic component
+ */
+interface DynamicComponentProps {
+  component: Component;
+}
 
 /**
  * Component that renders a component based on its type
  *
  */
-export default function DynamicComponent({
-  component,
-}: {
-  component: Component;
-}) {
+export default function DynamicComponent(props: DynamicComponentProps) {
   const { setValid, setTouched } = useValidation();
-  const { addMatchData, addError, removeError } = useScoutData();
+  const { addMatchData, addError, removeError, getMatchData } = useScoutData();
+  const { component } = props;
+  const [value, setValue] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const handleChange = (newValue: any) => {
+    setValue(newValue);
     setTouched(true);
     const isInvalid =
       component.required &&
@@ -40,52 +47,69 @@ export default function DynamicComponent({
   };
 
   useEffect(() => {
-    let initialValue: any;
+    let isMounted = true;
+    const loadInitialValue = async () => {
+      const storedValue = await getMatchData(component.name);
 
-    switch (component.type) {
-      case "checkbox":
-        initialValue = component.props?.default ?? false;
-        break;
-      case "text":
-      case "dropdown":
-        initialValue = component.props?.default ?? "";
-        break;
-      case "counter":
-        initialValue = component.props?.default ?? 0;
-        break;
-      default:
-        break;
-    }
-
-    addMatchData(component.name, initialValue);
-
-    if (component.required) {
-      const isInvalid =
-        initialValue === "" ||
-        (component.type === "checkbox" && initialValue === false) ||
-        (component.type === "counter" &&
-          initialValue === component.props?.default) ||
-        initialValue === 0;
-
-      setValid(!isInvalid);
-      if (isInvalid) {
-        addError(component.name);
+      let initial;
+      if (storedValue !== undefined && storedValue !== null) {
+        initial = storedValue;
+      } else {
+        switch (component.type) {
+          case "checkbox":
+            initial = component.props?.default ?? false;
+            break;
+          case "text":
+          case "dropdown":
+            initial = component.props?.default ?? "";
+            break;
+          case "counter":
+            initial = component.props?.default ?? 0;
+            break;
+          default:
+            initial = undefined;
+        }
       }
-    }
+
+      if (isMounted) {
+        setValue(initial);
+        setLoading(false);
+        addMatchData(component.name, initial);
+
+        if (component.required) {
+          const isInvalid =
+            initial === "" ||
+            (component.type === "checkbox" && initial === false) ||
+            (component.type === "counter" &&
+              initial === component.props?.default);
+
+          setValid(!isInvalid);
+          if (isInvalid) {
+            addError(component.name);
+          }
+        }
+      }
+    };
+    loadInitialValue();
 
     return () => {
-      if (component.required!) {
+      isMounted = false;
+      if (component.required) {
         removeError(component.name);
       }
     };
   }, []);
 
   const renderInput = () => {
+    if (loading) {
+      return null;
+    }
+
     switch (component.type) {
       case "counter":
         return (
           <CounterInput
-            defaultValue={component.props?.default as number}
+            defaultValue={value}
             max={component.props?.max!}
             min={component.props?.min!}
             onChange={handleChange}
@@ -95,6 +119,7 @@ export default function DynamicComponent({
       case "dropdown":
         return (
           <DropdownInput
+            defaultValue={value}
             options={component.props?.options!}
             onChange={handleChange}
             label={component.props?.label}
@@ -102,11 +127,12 @@ export default function DynamicComponent({
         );
 
       case "checkbox":
-        return <CheckboxInput onChange={handleChange} />;
+        return <CheckboxInput defaultValue={value} onChange={handleChange} />;
 
       case "text":
         return (
           <TextInput
+            defaultValue={value}
             onChange={handleChange}
             multiline={component.props?.multiline!}
             label={component.props?.label}

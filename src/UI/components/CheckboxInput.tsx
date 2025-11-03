@@ -19,7 +19,7 @@ interface CheckboxInputProps {
  */
 export default function CheckboxInput(props: CheckboxInputProps) {
   const { defaultValue, onChange } = props;
-  const [active, setActive] = useState(defaultValue ?? false);
+  const [active, setActive] = useState(defaultValue);
 
 
   const toggleActive = () => {

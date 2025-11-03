@@ -1,10 +1,11 @@
 import { createContext, ReactNode, useCallback, useState } from "react";
+import StoreManager from "../Utils/StoreManager";
 
 interface ScoutDataContextType {
   matchData: Map<string, any>;
   addMatchData: (key: string, val: any) => void;
   getMatchData: (key: string) => any;
-  clearMatchData: () => void;
+  clearMatchData: () => Promise<void>;
   errors: string[];
   addError: (error: string) => void;
   removeError: (error: string) => void;
@@ -30,24 +31,30 @@ export default function ScoutDataProvider(props: ScoutDataProviderProps) {
 
   const { children } = props;
 
-  const addMatchData = useCallback((key: string, val: any) => {
+  const addMatchData = useCallback(async (key: string, val: any) => {
     setMatchData((prevMap) => {
       const newMap = new Map(prevMap);
       newMap.set(key, val);
       return newMap;
     });
+
+    await StoreManager.set(key, val);
   }, []);
 
   const getMatchData = useCallback(
-    (key: string) => {
-      return matchData.get(key);
+    async (key: string) => {
+      return matchData.get(key) ?? (await StoreManager.get(key));
     },
     [matchData]
   );
 
-  const clearMatchData = () => {
+  const clearMatchData = async () => {
+    const storeToDelete = Array.from(matchData.keys());
+
     setMatchData(new Map<string, any>());
     setSubmitted(false);
+
+    await Promise.all(storeToDelete.map((key) => StoreManager.remove(key)));
   };
 
   const addError = useCallback((error: string) => {

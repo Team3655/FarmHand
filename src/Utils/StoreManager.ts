@@ -34,7 +34,7 @@ const StoreManager = {
       return value as string | undefined;
     } catch (e) {
       console.error("Failed to get item from store", e);
-      return undefined;
+      throw e;
     }
   },
 
@@ -46,6 +46,7 @@ const StoreManager = {
       console.log("Item added to store", key, value);
     } catch (e) {
       console.error("Failed to set value in store", e);
+      throw e;
     }
   },
 
@@ -56,6 +57,7 @@ const StoreManager = {
       await store.delete(key);
     } catch (e) {
       console.error("Failed to remove key from store", e);
+      throw e;
     }
   },
 
@@ -66,6 +68,7 @@ const StoreManager = {
       await store.clear();
     } catch (e) {
       console.error("Failed to clear store", e);
+      throw e;
     }
   },
 

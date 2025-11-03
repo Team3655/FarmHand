@@ -15,6 +15,7 @@ import useScoutData from "../../hooks/useScoutData";
 interface DropdownInputProps {
   label?: string;
   options: string[];
+  defaultValue?: string;
   onChange?: (value: string) => void;
 }
 
@@ -23,11 +24,11 @@ interface DropdownInputProps {
  * @returns Dropdown input for the page
  */
 export default function DropdownInput(props: DropdownInputProps) {
-  const { label, options, onChange } = props;
+  const { label, options, onChange, defaultValue } = props;
   const { valid, touched } = useValidation();
   const { submitted } = useScoutData();
   const showError = !valid && (touched || submitted);
-  const [option, setOption] = useState("");
+  const [option, setOption] = useState(defaultValue);
 
   const handleChange = (e: SelectChangeEvent) => {
     setOption(e.target.value);

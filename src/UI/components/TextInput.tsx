@@ -9,6 +9,7 @@ import useScoutData from "../../hooks/useScoutData";
 interface TextInputProps {
   label?: string;
   multiline?: boolean;
+  defaultValue?: string;
   onChange?: (value: string) => void;
 }
 
@@ -19,12 +20,12 @@ interface TextInputProps {
  * @returns A multiline text input
  */
 export default function TextInput(props: TextInputProps) {
-  const [text, setText] = useState("");
+  const { label, multiline, defaultValue, onChange } = props;
+
+  const [text, setText] = useState(defaultValue);
   const { valid, touched } = useValidation();
   const { submitted } = useScoutData();
   const showError = !valid && (touched || submitted);
-
-  const { label, multiline, onChange } = props;
 
   const updateText = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
