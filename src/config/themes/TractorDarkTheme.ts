@@ -49,7 +49,6 @@ const TractorDarkTheme = createTheme(
         primary: "#ffffff",
         secondary: "rgba(255,255,255,0.7)",
         disabled: "rgba(255,255,255,0.5)",
-
       },
       divider: "rgba(255,255,255,0.12)",
     },
@@ -87,10 +86,10 @@ const TractorDarkTheme = createTheme(
         fontFamily: "Antonio",
         fontWeight: 600,
       },
-      body1: { fontFamily: '"Baskervville", "Libre Baskervville"', fontWeight: 700 },
-    },
-    shape: {
-      borderRadius: 8,
+      body1: {
+        fontFamily: '"Baskervville", "Libre Baskervville"',
+        fontWeight: 700,
+      },
     },
   },
   Fonts

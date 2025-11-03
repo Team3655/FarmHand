@@ -86,10 +86,10 @@ const TractorLightTheme = createTheme(
         fontFamily: "Antonio",
         fontWeight: 600,
       },
-      body1: { fontFamily: '"Baskervville", "Libre Baskervville"', fontWeight: 700 },
-    },
-    shape: {
-      borderRadius: 8,
+      body1: {
+        fontFamily: '"Baskervville", "Libre Baskervville"',
+        fontWeight: 700,
+      },
     },
   },
   Fonts
