@@ -2,14 +2,12 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Card,
   Grid,
   Typography,
   useTheme,
 } from "@mui/material";
 import DynamicComponent from "./components/DynamicComponent";
 import ValidationProvider from "../context/ValidationContext";
-import { useState } from "react";
 import ExpandIcon from "@mui/icons-material/ExpandMoreRounded";
 import { useScoutData } from "../context/ScoutDataContext";
 import useToggle from "../hooks/useToggle";
