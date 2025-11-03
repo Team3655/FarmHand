@@ -41,7 +41,7 @@
       "title": "Testing 2",
       "fields": [
         {
-          "name": "Score counter",
+          "name": "Score counter2",
           "type": "counter",
           "props": {
             "default": 3
