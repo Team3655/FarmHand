@@ -161,11 +161,11 @@ export default function Scout() {
           <Button
             onClick={() => setShowResetPopup(false)}
             color="primary"
-            variant="outlined"
+            variant="contained"
           >
             Cancel
           </Button>
-          <Button onClick={handleReset} color="error" variant="outlined">
+          <Button onClick={handleReset} color="error" variant="contained">
             Reset
           </Button>
         </DialogActions>
