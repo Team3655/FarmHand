@@ -11,5 +11,5 @@
     "store:default",
     "fs:default",
     "clipboard-manager:allow-write-text"
-  ]
+  ] 
 }

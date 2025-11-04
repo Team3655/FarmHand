@@ -248,7 +248,9 @@ export default function Scout() {
             </Typography>
             {qrCodeData.current ? (
               <img
-                src={`data:image/svg+xml;base64,${btoa(qrCodeData.current.image)}`}
+                src={`data:image/svg+xml;base64,${btoa(
+                  qrCodeData.current.image
+                )}`}
                 alt="QR Code"
                 style={{ borderRadius: 20 }}
               />
