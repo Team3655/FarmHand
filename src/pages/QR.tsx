@@ -10,21 +10,22 @@ import {
 import QrScannerPopup from "../ui/dialog/QrScannerPopup";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { useDialog } from "../hooks/useDialog";
 
 export default function QRPage() {
   const theme = useTheme();
   const [qrCodes, setQrCodes] = useState<QrCode[]>([]);
   const [activeCode, setActiveCode] = useState<QrCode | null>(null);
-  const [showPopup, setShowPopup] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
+  const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
+  const [scannerOpen, openScanner, closeScanner] = useDialog();
 
   const handleCopy = async () => {
-    if(!activeCode) return;
-    await writeText(activeCode.data)
-  }
+    if (!activeCode) return;
+    await writeText(activeCode.data);
+  };
   const selectImage = (image: QrCode) => {
     setActiveCode(image);
-    setShowPopup(true);
+    openQrPopup();
   };
 
   const fetchQrCodes = async () => {
@@ -73,7 +74,7 @@ export default function QRPage() {
         size="large"
         variant="extended"
         sx={{ position: "fixed", bottom: 16, right: 16 }}
-        onClick={() => setScannerOpen(true)}
+        onClick={openScanner}
       >
         <QrScanIcon sx={{ mr: 1 }} />
         Scan
@@ -117,12 +118,13 @@ export default function QRPage() {
       </Box>
       <QrScannerPopup
         open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
+        onClose={closeScanner}
         onScanListUpdate={() => {}}
       />
+
       <QrShareDialog
-        open={showPopup}
-        onClose={() => setShowPopup(false)}
+        open={showQrPopup}
+        onClose={closeQrPopup}
         qrCodeData={activeCode!}
         handleCopy={handleCopy}
       />

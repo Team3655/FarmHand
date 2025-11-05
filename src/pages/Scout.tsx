@@ -25,6 +25,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
 import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
+import { useDialog } from "../hooks/useDialog";
 
 export default function Scout() {
   const { schema, schemaName } = useSchema();
@@ -33,9 +34,9 @@ export default function Scout() {
     useScoutData();
 
   const [resetKey, setResetKey] = useState<Key>(0);
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [showResetPopup, setShowResetPopup] = useState(false);
-  const [showQRPage, setShowQRPage] = useState(false);
+  const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
+  const [showResetPopup, openResetPopup, closeResetPopup] = useDialog();
+  const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
   const qrCodeData = useRef<QrCode | null>(null);
 
   const schemaData = schema as Schema;
@@ -43,7 +44,7 @@ export default function Scout() {
   const handleSubmit = () => {
     setSubmitted(true);
     if (errors.length > 0) {
-      setShowErrorPopup(true);
+      openErrorPopup();
       return;
     }
 
@@ -54,7 +55,7 @@ export default function Scout() {
     await clearMatchData();
     clearErrors();
     setResetKey((prev) => (prev as number) + 1);
-    setShowResetPopup(false);
+    openResetPopup();
   };
 
   const handleGenerateQr = async () => {
@@ -85,7 +86,7 @@ export default function Scout() {
     });
 
     qrCodeData.current = { name: fileName, data: valueString, image: qrSvg };
-    setShowQRPage(true);
+    openQrPopup();
   };
 
   const handleSaveQR = async () => {
@@ -131,7 +132,7 @@ export default function Scout() {
       svg: svgToSave,
       filePath: filePath,
     });
-    setShowQRPage(false);
+    closeQrPopup();
   };
 
   const handleCopy = async () => {
@@ -179,7 +180,7 @@ export default function Scout() {
             variant="contained"
             color="inherit"
             sx={{ mt: 3 }}
-            onClick={() => setShowResetPopup(true)}
+            onClick={openResetPopup}
           >
             <ResetIcon sx={{ mr: 1 }} />
             Reset form
@@ -197,7 +198,7 @@ export default function Scout() {
       </Box>
 
       {/*Page reload confirmation popup*/}
-      <Dialog open={showResetPopup} onClose={() => setShowResetPopup(false)}>
+      <Dialog open={showResetPopup} onClose={closeResetPopup}>
         <DialogTitle
           sx={{
             display: "flex",
@@ -208,11 +209,7 @@ export default function Scout() {
           Are you sure you want to reset the form?
         </DialogTitle>
         <DialogActions>
-          <Button
-            onClick={() => setShowResetPopup(false)}
-            color="primary"
-            variant="contained"
-          >
+          <Button onClick={closeResetPopup} color="primary" variant="contained">
             Cancel
           </Button>
           <Button onClick={handleReset} color="error" variant="contained">
@@ -222,7 +219,7 @@ export default function Scout() {
       </Dialog>
 
       {/* Form error popup */}
-      <Dialog open={showErrorPopup} onClose={() => setShowErrorPopup(false)}>
+      <Dialog open={showErrorPopup} onClose={closeErrorPopup}>
         <DialogTitle
           sx={{
             display: "flex",
@@ -247,7 +244,7 @@ export default function Scout() {
           ))}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowErrorPopup(false)} color="inherit">
+          <Button onClick={closeErrorPopup} color="inherit">
             OK
           </Button>
         </DialogActions>
@@ -255,8 +252,8 @@ export default function Scout() {
 
       {/*QR export popup */}
       <QrShareDialog
-        open={showQRPage}
-        onClose={() => setShowQRPage(false)}
+        open={showQrPopup}
+        onClose={closeQrPopup}
         qrCodeData={qrCodeData.current!}
         handleSaveQR={handleSaveQR}
         handleCopy={handleCopy}
