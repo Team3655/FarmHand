@@ -1,4 +1,4 @@
-use crate::commands::{generate_qr_code, save_qr_svg };
+use crate::commands::{generate_qr_code, save_qr_svg};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod commands;
