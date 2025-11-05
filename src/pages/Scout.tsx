@@ -27,11 +27,11 @@ import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
 import CopyIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadIcon from "@mui/icons-material/DownloadRounded";
-import QrCodeIcon from "@mui/icons-material/QrCodeRounded"
+import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
-import { BaseDirectory, mkdir} from "@tauri-apps/plugin-fs";
+import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 
 export default function Scout() {
   const { schema, schemaName } = useSchema();
@@ -76,10 +76,16 @@ export default function Scout() {
 
     const values = [];
     for (const key of keys) {
-      values.push(await getMatchData(key));
+      const value = await getMatchData(key);
+      
+      if (value === undefined || value === null || value === "") {
+        values.push("*");
+      } else {
+        values.push(value);
+      }
     }
 
-    const valueString = values.join(" ");
+  const valueString = "FARMHAND: " + values.join(" ");
 
     const qrSvg = await invoke<string>("generate_qr_code", {
       data: valueString,
@@ -90,8 +96,7 @@ export default function Scout() {
   };
 
   const handleSaveQR = async () => {
-
-    await mkdir('saved-matches', {
+    await mkdir("saved-matches", {
       baseDir: BaseDirectory.AppLocalData,
       recursive: true,
     });

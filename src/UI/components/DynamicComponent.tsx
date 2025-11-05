@@ -60,10 +60,8 @@ export default function DynamicComponent(props: DynamicComponentProps) {
             initial = component.props?.default ?? false;
             break;
           case "text":
-            initial = component.props?.default ?? "*";
-            break;
           case "dropdown":
-            initial = component.props?.default ?? "*";
+            initial = component.props?.default ?? "";
             break;
           case "counter":
             initial = component.props?.default ?? 0;
@@ -74,11 +72,7 @@ export default function DynamicComponent(props: DynamicComponentProps) {
       }
 
       if (isMounted) {
-        if (component.type === "text") {
-          setValue("");
-        } else {
-          setValue(initial);
-        }
+        setValue(initial);
         setLoading(false);
         addMatchData(component.name, initial);
 
