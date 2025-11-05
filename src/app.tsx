@@ -17,23 +17,31 @@ import MenuIcon from "@mui/icons-material/MenuRounded";
 import HomeIcon from "@mui/icons-material/HomeRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
+import QrIcon from '@mui/icons-material/QrCodeScannerRounded'
 import React from "react";
 import { HashRouter, Route, Routes, useNavigate } from "react-router";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import Scout from "./pages/Scout";
 import { useTheme } from "@mui/material/styles";
+import QRPage from "./pages/QR";
 
 const pages = [
-  { text: "Home", icon: <HomeIcon />, component: <Home />, path: "/" },
+  { title: "Home", icon: <HomeIcon />, component: <Home />, path: "/" },
   {
-    text: "Scout",
+    title: "Scout",
     icon: <AddChartIcon />,
     component: <Scout />,
     path: "/scout",
   },
   {
-    text: "Settings",
+    title: "QR Codes",
+    icon: <QrIcon />,
+    component: <QRPage />,
+    path: "/qr",
+  },
+  {
+    title: "Settings",
     icon: <SettingsIcon />,
     component: <Settings />,
     path: "/settings",
@@ -49,7 +57,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <AppBar 
+      <AppBar
         position="static"
         sx={{ backgroundColor: theme.palette.primary.main }}
       >
@@ -69,10 +77,10 @@ function Layout({ children }: { children: React.ReactNode }) {
           </Typography>
         </Toolbar>
       </AppBar>
-      <Drawer open={drawerOpen} onClose={toggleDrawer(false)}>
+      <Drawer open={drawerOpen} onClose={toggleDrawer(false)} sx={{backdropFilter: "blur(2px)" }}>
         <Box
           sx={{
-            width: '25vw',
+            width: "25vw",
             height: "100%",
             display: "flex",
             flexDirection: "column",
@@ -81,15 +89,15 @@ function Layout({ children }: { children: React.ReactNode }) {
         >
           <List>
             {pages
-              .filter((item) => item.text !== "Settings")
+              .filter((item) => item.title !== "Settings")
               .map((item) => (
-                <ListItem key={item.text} disablePadding>
+                <ListItem key={item.title} disablePadding>
                   <ListItemButton onClick={() => navigate(item.path)}>
                     <ListItemIcon>{item.icon}</ListItemIcon>
                     <ListItemText
                       disableTypography
                       primary={
-                        <Typography variant="h6">{item.text}</Typography>
+                        <Typography variant="h6">{item.title}</Typography>
                       }
                     />
                   </ListItemButton>
@@ -122,7 +130,7 @@ export default function App() {
       <Routes>
         {pages.map((page) => (
           <Route
-            key={page.text}
+            key={page.title}
             path={page.path}
             element={<Layout>{page.component}</Layout>}
           />

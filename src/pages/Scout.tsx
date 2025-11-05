@@ -30,6 +30,8 @@ import CopyIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadIcon from "@mui/icons-material/DownloadRounded";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
+import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
+import { create, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
 
 export default function Scout() {
   const { schema, schemaName } = useSchema();
@@ -82,8 +84,34 @@ export default function Scout() {
     const qrSvg = await invoke<string>("generate_qr_code", {
       data: valueString,
     });
+
     qrCodeData.current = { data: valueString, image: qrSvg };
     setShowQRPage(true);
+  };
+
+  const handleSaveQR = async () => {
+    // Ensure the directory for match history exists in the app's local data folder.
+    await mkdir('saved-matches', {
+      baseDir: BaseDirectory.AppLocalData,
+      recursive: true,
+    });
+
+    // Create a unique filename for this match's QR code.
+    const fileName = `match-${Date.now()}.svg`;
+
+    // Resolve the final file path within the 'match-history' subdirectory.
+    const filePath = await resolve(
+      await appLocalDataDir(),
+      "saved-matches",
+      fileName
+    );
+
+    // Invoke the Rust command to save the file.
+    await invoke("save_qr_svg", {
+      svg: qrCodeData.current?.image,
+      filePath: filePath,
+    });
+    setShowQRPage(false);
   };
 
   const handleCopy = async () => {
@@ -228,7 +256,7 @@ export default function Scout() {
               color="inherit"
               variant="contained"
               sx={{ backgroundColor: theme.palette.primary.dark }}
-              onClick={() => setShowQRPage(false)}
+              onClick={() => handleSaveQR()}
             >
               Save to match history
             </Button>
