@@ -25,7 +25,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
 import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
-import { useDialog } from "../hooks/useDialog";
+import useDialog from "../hooks/useDialog";
 
 export default function Scout() {
   const { schema, schemaName } = useSchema();

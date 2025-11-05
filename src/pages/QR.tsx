@@ -10,7 +10,7 @@ import {
 import QrScannerPopup from "../ui/dialog/QrScannerPopup";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { useDialog } from "../hooks/useDialog";
+import useDialog from "../hooks/useDialog";
 
 export default function QRPage() {
   const theme = useTheme();
