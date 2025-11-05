@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import StoreManager from "../Utils/StoreManager";
+import StoreManager from "../utils/StoreManager";
 
 import testSchema from "../config/schema/test.json";
 

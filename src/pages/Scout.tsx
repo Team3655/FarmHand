@@ -17,7 +17,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import Section from "../UI/Section";
+import Section from "../ui/Section";
 import { useSchema } from "../context/SchemaContext";
 import { useScoutData } from "../context/ScoutDataContext";
 import { useEffect, useState, Key, useRef } from "react";
@@ -77,7 +77,7 @@ export default function Scout() {
     const values = [];
     for (const key of keys) {
       const value = await getMatchData(key);
-      
+
       if (value === undefined || value === null || value === "") {
         values.push("*");
       } else {
@@ -85,7 +85,7 @@ export default function Scout() {
       }
     }
 
-  const valueString = "FARMHAND: " + values.join(" ");
+    const valueString = "FARMHAND: " + values.join(" ");
 
     const qrSvg = await invoke<string>("generate_qr_code", {
       data: valueString,
@@ -233,9 +233,9 @@ export default function Scout() {
         </DialogActions>
       </Dialog>
 
-      {/*Full page QR export popup */}
-      <Dialog fullScreen open={showQRPage} onClose={() => setShowQRPage(false)}>
-        <AppBar
+      {/*QR export popup */}
+      <Dialog open={showQRPage} onClose={() => setShowQRPage(false)}>
+        {/* <AppBar
           sx={{
             position: "relative",
             backgroundColor: theme.palette.primary.main,
@@ -263,7 +263,7 @@ export default function Scout() {
               Save to match history
             </Button>
           </Toolbar>
-        </AppBar>
+        </AppBar> */}
         <DialogContent
           sx={{
             display: "flex",
@@ -309,6 +309,18 @@ export default function Scout() {
                 download
               </Button>
             </Stack>
+            <Button
+              autoFocus
+              color="inherit"
+              variant="contained"
+              sx={{
+                backgroundColor: theme.palette.primary.dark,
+                width: "100%",
+              }}
+              onClick={() => handleSaveQR()}
+            >
+              Save to match history
+            </Button>
           </Stack>
         </DialogContent>
       </Dialog>

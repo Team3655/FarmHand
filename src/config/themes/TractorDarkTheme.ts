@@ -1,5 +1,5 @@
 import { createTheme } from "@mui/material/styles";
-import Fonts from "../../Utils/Fonts";
+import Fonts from "../../utils/Fonts";
 
 const TractorDarkTheme = createTheme(
   {

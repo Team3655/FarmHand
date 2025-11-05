@@ -1,12 +1,12 @@
 import { Typography } from "@mui/material";
-import CounterInput from "./CounterInput";
-import InputCard from "../InputCard";
-import DropdownInput from "./DropdownInput";
-import CheckboxInput from "./CheckboxInput";
-import TextInput from "./TextInput";
 import { useValidation } from "../../context/ValidationContext";
 import { useScoutData } from "../../context/ScoutDataContext";
 import { useEffect, useState } from "react";
+import CounterInput from "./CounterInput";
+import DropdownInput from "./DropdownInput";
+import CheckboxInput from "./CheckboxInput";
+import TextInput from "./TextInput";
+import InputCard from "../InputCard";
 
 /**
  * Props for the dynamic component

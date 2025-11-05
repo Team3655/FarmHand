@@ -5,7 +5,7 @@ import {
   useContext,
   useState,
 } from "react";
-import StoreManager from "../Utils/StoreManager";
+import StoreManager from "../utils/StoreManager";
 
 interface ScoutDataContextType {
   matchData: Map<string, any>;

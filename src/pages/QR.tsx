@@ -7,7 +7,7 @@ import {
   readDir,
   readTextFile,
 } from "@tauri-apps/plugin-fs";
-import QrScannerPopup from "../UI/QrScannerPopup";
+import QrScannerPopup from "../ui/dialog/QrScannerPopup";
 
 export default function QRPage() {
   const theme = useTheme();
