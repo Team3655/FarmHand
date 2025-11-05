@@ -26,7 +26,6 @@ import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
 import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
 
-
 export default function Scout() {
   const { schema, schemaName } = useSchema();
   const theme = useTheme();
@@ -77,6 +76,7 @@ export default function Scout() {
         values.push(value);
       }
     }
+    const fileName = `match-${Date.now()}.svg`;
 
     const valueString = "FARMHAND: " + values.join(" ");
 
@@ -84,7 +84,7 @@ export default function Scout() {
       data: valueString,
     });
 
-    qrCodeData.current = { data: valueString, image: qrSvg };
+    qrCodeData.current = { name: fileName, data: valueString, image: qrSvg };
     setShowQRPage(true);
   };
 
@@ -94,23 +94,51 @@ export default function Scout() {
       recursive: true,
     });
 
-    const fileName = `match-${Date.now()}.svg`;
-
     const filePath = await resolve(
       await appLocalDataDir(),
       "saved-matches",
-      fileName
+      qrCodeData.current?.name ?? "UNDEFINED.svg"
     );
 
+    let svgToSave = qrCodeData.current?.image;
+    if (svgToSave && qrCodeData.current?.data) {
+      const cdataPayload = `<![CDATA[${qrCodeData.current.data}]]>`;
+      const descRegex = /<desc>.*?<\/desc>/s;
+
+      // Check if a <desc> tag already exists.
+      if (descRegex.test(svgToSave)) {
+        svgToSave = svgToSave.replace(
+          descRegex,
+          `<desc>${cdataPayload}</desc>`
+        );
+      } else {
+        // Otherwise, insert a new <desc> tag inside the <svg> element.
+        const dataPayload = `<desc>${cdataPayload}</desc>`;
+        const svgTagIndex = svgToSave.indexOf("<svg");
+        if (svgTagIndex !== -1) {
+          const endOfOpeningSvgTag = svgToSave.indexOf(">", svgTagIndex);
+          if (endOfOpeningSvgTag !== -1) {
+            svgToSave =
+              svgToSave.slice(0, endOfOpeningSvgTag + 1) +
+              dataPayload +
+              svgToSave.slice(endOfOpeningSvgTag + 1);
+          }
+        }
+      }
+    }
+
     await invoke("save_qr_svg", {
-      svg: qrCodeData.current?.image,
+      svg: svgToSave,
       filePath: filePath,
     });
     setShowQRPage(false);
   };
 
   const handleCopy = async () => {
-    await writeText(qrCodeData.current?.data!);
+    const descTagContents = qrCodeData.current?.data!;
+    const decodedData = decodeURIComponent(descTagContents);
+
+    await writeText(decodedData);
   };
 
   useEffect(() => {

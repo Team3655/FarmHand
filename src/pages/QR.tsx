@@ -8,11 +8,24 @@ import {
   readTextFile,
 } from "@tauri-apps/plugin-fs";
 import QrScannerPopup from "../ui/dialog/QrScannerPopup";
+import QrShareDialog from "../ui/dialog/QrShareDialogue";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 
 export default function QRPage() {
   const theme = useTheme();
-  const [qrCodes, setQrCodes] = useState<Image[]>([]);
+  const [qrCodes, setQrCodes] = useState<QrCode[]>([]);
+  const [activeCode, setActiveCode] = useState<QrCode | null>(null);
+  const [showPopup, setShowPopup] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  const handleCopy = async () => {
+    if(!activeCode) return;
+    await writeText(activeCode.data)
+  }
+  const selectImage = (image: QrCode) => {
+    setActiveCode(image);
+    setShowPopup(true);
+  };
 
   const fetchQrCodes = async () => {
     const folderExists = await exists("saved-matches", {
@@ -32,18 +45,21 @@ export default function QRPage() {
       files
         .filter((file) => file.name.endsWith(".svg"))
         .map(async (file) => {
-          console.log(file.name);
           const contents = await readTextFile(`saved-matches/${file.name}`, {
             baseDir: BaseDirectory.AppLocalData,
           });
+
+          const match = contents.match(/<desc><!\[CDATA\[(.*?)\]\]><\/desc>/s);
+          const data = match ? match[1] : "";
+
           return {
             name: file.name,
+            data: data,
             image: contents,
           };
         })
     );
     setQrCodes(images);
-    console.log(files);
   };
 
   useEffect(() => {
@@ -81,10 +97,14 @@ export default function QRPage() {
                     transition:
                       "border-color 0.2s ease, background-color 0.2s ease",
                     alignContent: "center",
+                    ":hover": {
+                      borderColor: theme.palette.primary.main,
+                    },
                   }}
+                  onClick={() => selectImage(qr)}
                 >
                   <img
-                    src={`data:image/svg+xml;base64,${btoa(qr.image)}`}
+                    src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
                     alt="QR Code"
                     style={{ borderRadius: 8, maxWidth: "100%" }}
                   />
@@ -99,6 +119,12 @@ export default function QRPage() {
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScanListUpdate={() => {}}
+      />
+      <QrShareDialog
+        open={showPopup}
+        onClose={() => setShowPopup(false)}
+        qrCodeData={activeCode!}
+        handleCopy={handleCopy}
       />
     </>
   );

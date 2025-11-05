@@ -8,7 +8,6 @@ import {
   Slide,
   IconButton,
   useTheme,
-  Zoom,
 } from "@mui/material";
 import { useState, forwardRef } from "react";
 import CopyIcon from "@mui/icons-material/ContentCopyRounded";
@@ -24,7 +23,7 @@ interface QrExportDialogProps {
   open: boolean;
   onClose: () => void;
   qrCodeData: QrCode;
-  handleSaveQR: () => void;
+  handleSaveQR?: () => void;
   handleCopy: () => void;
   allowSaveToHistory?: boolean;
 }
@@ -106,7 +105,11 @@ export default function QrShareDialog(props: QrExportDialogProps) {
                   backgroundColor: theme.palette.primary.dark,
                   width: "100%",
                 }}
-                onClick={() => handleSaveQR()}
+                onClick={() => {
+                  if (handleSaveQR) {
+                    handleSaveQR();
+                  }
+                }}
               >
                 Save to match history
               </Button>
