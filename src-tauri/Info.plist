@@ -2,7 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleName</key>
+    <string>My Tauri App</string>
+
+    <!-- Camera usage description -->
     <key>NSCameraUsageDescription</key>
-    <string>Request camera access for Farmhand</string>
+    <string>This app requires access to the camera to scan QR codes.</string>
 </dict>
 </plist>

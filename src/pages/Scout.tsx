@@ -22,16 +22,16 @@ import { useSchema } from "../context/SchemaContext";
 import { useScoutData } from "../context/ScoutDataContext";
 import { useEffect, useState, Key, useRef } from "react";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
-import QRcodeIcon from "@mui/icons-material/QrcodeRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
 import CopyIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadIcon from "@mui/icons-material/DownloadRounded";
+import QrCodeIcon from "@mui/icons-material/QrCodeRounded"
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
-import { create, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, mkdir} from "@tauri-apps/plugin-fs";
 
 export default function Scout() {
   const { schema, schemaName } = useSchema();
@@ -90,23 +90,20 @@ export default function Scout() {
   };
 
   const handleSaveQR = async () => {
-    // Ensure the directory for match history exists in the app's local data folder.
+
     await mkdir('saved-matches', {
       baseDir: BaseDirectory.AppLocalData,
       recursive: true,
     });
 
-    // Create a unique filename for this match's QR code.
     const fileName = `match-${Date.now()}.svg`;
 
-    // Resolve the final file path within the 'match-history' subdirectory.
     const filePath = await resolve(
       await appLocalDataDir(),
       "saved-matches",
       fileName
     );
 
-    // Invoke the Rust command to save the file.
     await invoke("save_qr_svg", {
       svg: qrCodeData.current?.image,
       filePath: filePath,
@@ -168,7 +165,7 @@ export default function Scout() {
             sx={{ mt: 3 }}
             onClick={handleSubmit}
           >
-            <QRcodeIcon sx={{ mr: 1 }} />
+            <QrCodeIcon sx={{ mr: 1 }} />
             Complete scout
           </Button>
         </Stack>

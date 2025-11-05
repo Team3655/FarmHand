@@ -10,7 +10,10 @@
     "clipboard-manager:allow-write-text",
     "fs:allow-exists",
     "fs:allow-read-dir",
-    "fs:allow-read-file",
+    "fs:allow-applocaldata-read",
+    "fs:allow-applocaldata-write",
+    "fs:allow-applocaldata-read-recursive",
+    "fs:allow-read",
     "fs:allow-write-file",
     "fs:allow-mkdir",
     {

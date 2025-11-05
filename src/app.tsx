@@ -17,7 +17,7 @@ import MenuIcon from "@mui/icons-material/MenuRounded";
 import HomeIcon from "@mui/icons-material/HomeRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
-import QrIcon from '@mui/icons-material/QrCodeScannerRounded'
+import QrCodeIcon from '@mui/icons-material/QrCodeRounded';
 import React from "react";
 import { HashRouter, Route, Routes, useNavigate } from "react-router";
 import Home from "./pages/Home";
@@ -36,7 +36,7 @@ const pages = [
   },
   {
     title: "QR Codes",
-    icon: <QrIcon />,
+    icon: <QrCodeIcon />,
     component: <QRPage />,
     path: "/qr",
   },
