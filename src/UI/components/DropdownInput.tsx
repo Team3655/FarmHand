@@ -5,7 +5,6 @@ import {
   SelectChangeEvent,
   FormControl,
 } from "@mui/material";
-import { useState } from "react";
 import { useValidation } from "../../context/ValidationContext";
 import { useScoutData } from "../../context/ScoutDataContext";
 
@@ -16,7 +15,7 @@ import { useScoutData } from "../../context/ScoutDataContext";
 interface DropdownInputProps {
   label?: string;
   options: string[];
-  defaultValue?: string;
+  value?: string;
   onChange?: (value: string) => void;
 }
 
@@ -25,14 +24,12 @@ interface DropdownInputProps {
  * @returns Dropdown input for the page
  */
 export default function DropdownInput(props: DropdownInputProps) {
-  const { label, options, onChange, defaultValue } = props;
+  const { label, options, onChange, value } = props;
   const { valid, touched } = useValidation();
   const { submitted } = useScoutData();
   const showError = !valid && (touched || submitted);
-  const [option, setOption] = useState(defaultValue);
 
   const handleChange = (e: SelectChangeEvent) => {
-    setOption(e.target.value);
     if (onChange) onChange(e.target.value);
   };
 
@@ -47,7 +44,7 @@ export default function DropdownInput(props: DropdownInputProps) {
       <Select
         labelId="demo-simple-select-label"
         id="demo-simple-select"
-        value={option}
+        value={value}
         label={label}
         onChange={handleChange}
         color="secondary"

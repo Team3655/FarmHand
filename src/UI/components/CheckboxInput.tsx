@@ -1,13 +1,12 @@
 import { Button } from "@mui/material";
 import CheckIcon from "@mui/icons-material/CheckRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
-import useToggle from "../../hooks/useToggle";
 
 /**
  * Props for the Checkbox input
  */
 interface CheckboxInputProps {
-  defaultValue?: boolean;
+  value: boolean;
   onChange?: (value: boolean) => void;
 }
 
@@ -18,17 +17,16 @@ interface CheckboxInputProps {
  * @returns a checkbox component
  */
 export default function CheckboxInput(props: CheckboxInputProps) {
-  const { defaultValue, onChange } = props;
-  const { active, toggleActive } = useToggle(defaultValue);
+  const { value, onChange } = props;
 
   return (
     <Button
       onClick={() => {
-        toggleActive();
-        if (onChange) onChange(active);
+        const newValue = !value;
+        if (onChange) onChange(newValue);
       }}
       variant="contained"
-      color={active ? "secondary" : "inherit"}
+      color={value ? "secondary" : "inherit"}
       sx={{
         display: "flex",
         alignItems: "center",
@@ -38,7 +36,7 @@ export default function CheckboxInput(props: CheckboxInputProps) {
       }}
       disableElevation
     >
-      {active ? <CheckIcon /> : <CloseIcon />}
+      {value ? <CheckIcon /> : <CloseIcon />}
     </Button>
   );
 }

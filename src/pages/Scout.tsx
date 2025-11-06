@@ -15,7 +15,7 @@ import {
 import Section from "../ui/Section";
 import { useSchema } from "../context/SchemaContext";
 import { useScoutData } from "../context/ScoutDataContext";
-import { useEffect, useState, Key, useRef } from "react";
+import { useState, Key, useRef } from "react";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
@@ -117,10 +117,6 @@ export default function Scout() {
 
     await writeText(decodedData);
   };
-
-  useEffect(() => {
-    clearMatchData();
-  }, []);
 
   if (!schema) {
     return (

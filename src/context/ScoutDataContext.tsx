@@ -49,9 +49,26 @@ export default function ScoutDataProvider(props: ScoutDataProviderProps) {
 
   const getMatchData = useCallback(
     async (key: string) => {
-      return matchData.get(key) ?? (await StoreManager.get(key));
+      const cachedValue = matchData.get(key);
+      if (cachedValue !== undefined && cachedValue !== null) {
+        return cachedValue;
+      }
+
+      const storedValue = await StoreManager.get(key);
+
+      if (storedValue !== undefined && storedValue !== null) {
+        setMatchData((prevMap) => {
+          if (prevMap.get(key) === storedValue) return prevMap;
+          const newMap = new Map(prevMap);
+          newMap.set(key, storedValue);
+          return newMap;
+        });
+        return storedValue;
+      }
+
+      return undefined;
     },
-    [matchData]
+    [matchData, setMatchData]
   );
 
   const clearMatchData = async () => {

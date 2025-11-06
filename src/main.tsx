@@ -10,7 +10,7 @@ import ScoutDataProvider from "./context/ScoutDataContext";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider theme={TractorLightTheme}>
+    <ThemeProvider theme={TractorDarkTheme}>
       <CssBaseline />
       <SchemaProvider>
         <ScoutDataProvider>
