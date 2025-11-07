@@ -10,6 +10,7 @@ import {
 import StoreManager from "../utils/StoreManager";
 
 import testSchema from "../config/schema/test.json";
+import Reefscape from "../config/schema/2025Reefscape.json";
 import { createSchemaHash } from "../utils/GeneralUtils";
 
 /**
@@ -51,6 +52,11 @@ export default function SchemaProvider({ children }: { children: ReactNode }) {
         path: "../config/schema/test.json",
         schema: testSchema as Schema,
       },
+      {
+        name: "2025 Reefscape",
+        path: "../config/schema/2025Reefscape.json",
+        schema: Reefscape as Schema,
+      },
     ];
 
     availableSchemas.current = defaults;
@@ -71,7 +77,7 @@ export default function SchemaProvider({ children }: { children: ReactNode }) {
       setSchemaName(found.name);
 
       const hash = await createSchemaHash(found.schema);
-      setSchemaHash(hash)
+      setSchemaHash(hash);
       console.log("Setting schema hash", hash);
       await StoreManager.setLastSchema(found.name);
     },
@@ -100,15 +106,15 @@ export default function SchemaProvider({ children }: { children: ReactNode }) {
           selectSchema(lastSchema);
         } else if (schemas.length > 0) {
           // Otherwise, default to first schema
-          selectSchema(schemas[0].name);
+          selectSchema(schemas[1].name);
         }
       } catch (error) {
         console.error("Error initializing schema:", error);
         // Still set a default if something fails
         const schemas = await loadSchemas();
         if (schemas.length > 0) {
-          setSchema(schemas[0].schema);
-          setSchemaName(schemas[0].name);
+          setSchema(schemas[1].schema);
+          setSchemaName(schemas[1].name);
         }
       }
     };
