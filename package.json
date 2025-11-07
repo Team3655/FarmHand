@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "start": "npm run tauri dev",
-    "start-ios": "npm run tauri ios dev 'ipad air 11'",
-    "start-android": "npm run tauri android dev 'Medium Tablet'"
+    "start-ios": "npm run tauri ios dev",
+    "start-android": "npm run tauri android dev"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
