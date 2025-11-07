@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export function useAsyncFetch<T>(
   fetchFunction: () => Promise<T>,
@@ -7,6 +7,11 @@ export function useAsyncFetch<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refetchIndex, setRefetchIndex] = useState(0);
+
+  const refetch = useCallback(() => {
+    setRefetchIndex((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,7 +40,7 @@ export function useAsyncFetch<T>(
     return () => {
       isMounted = false;
     };
-  }, dependencies);
+  }, [...dependencies, refetchIndex]);
 
-  return [data, loading, error] as const;
+  return [data, loading, error, refetch] as const;
 }

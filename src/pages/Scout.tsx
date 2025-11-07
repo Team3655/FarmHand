@@ -20,13 +20,10 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
-import { invoke } from "@tauri-apps/api/core";
-import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
-import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
+
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
 import useDialog from "../hooks/useDialog";
-import { QrCodeBuilder } from "../utils/QrUtils";
-import { EmbedDataInSvg } from "../utils/GeneralUtils";
+import { QrCodeBuilder, saveQrCode } from "../utils/QrUtils";
 
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
@@ -56,7 +53,7 @@ export default function Scout() {
     await clearMatchData();
     clearErrors();
     setResetKey((prev) => (prev as number) + 1);
-    openResetPopup();
+    closeResetPopup();
   };
 
   const handleGenerateQr = async () => {
@@ -70,24 +67,8 @@ export default function Scout() {
   const handleSaveQR = async () => {
     if (!qrCodeData.current) return;
 
-    await mkdir("saved-matches", {
-      baseDir: BaseDirectory.AppLocalData,
-      recursive: true,
-    });
-
-    const filePath = await resolve(
-      await appLocalDataDir(),
-      "saved-matches",
-      qrCodeData.current.name
-    );
-
-    const svgToSave = EmbedDataInSvg(qrCodeData.current);
-
-    await invoke("save_qr_svg", {
-      svg: svgToSave,
-      filePath,
-    });
-
+    await saveQrCode(qrCodeData.current);
+    
     closeQrPopup();
   };
 

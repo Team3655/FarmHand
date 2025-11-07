@@ -49,7 +49,7 @@ const fetchQrCodes = async () => {
 
 export default function QRPage() {
   const theme = useTheme();
-  const [qrCodes, loadingQr, errorFetchingQr] = useAsyncFetch(fetchQrCodes);
+  const [qrCodes, loadingQr, errorFetchingQr, refetchQrCodes] = useAsyncFetch(fetchQrCodes);
   const [activeCode, setActiveCode] = useState<QrCode | null>(null);
   const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
   const [scannerOpen, openScanner, closeScanner] = useDialog();
@@ -127,7 +127,7 @@ export default function QRPage() {
       <QrScannerPopup
         open={scannerOpen}
         onClose={closeScanner}
-        onScanListUpdate={() => {}}
+        onImport={() => {refetchQrCodes(); console.log("RE FETCHING QR")}}
       />
 
       <QrShareDialog

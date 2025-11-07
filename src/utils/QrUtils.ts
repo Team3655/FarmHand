@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { compressData, decompressData } from "./GeneralUtils";
+import { compressData, decompressData, EmbedDataInSvg } from "./GeneralUtils";
+import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
+import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 
 export type QrType = "match" | "schema" | "theme" | "settings";
 export type EncodedQr = string;
@@ -117,3 +119,42 @@ export const QrCodeBuilder = {
       await writeDataToQrCode("match", schemaHash, payload, id),
   },
 };
+
+export function validateQR(qrString: string) {
+  const [prefix, type, schemaHash, compressed] = qrString.split(":");
+  if (!prefix || !type || !schemaHash || !compressed) {
+    return false;
+  }
+  if (prefix === APP_PREFIX) return true;
+  return false;
+}
+
+export async function saveQrCode(code: QrCode) {
+  await mkdir("saved-matches", {
+    baseDir: BaseDirectory.AppLocalData,
+    recursive: true,
+  });
+
+  const filePath = await resolve(
+    await appLocalDataDir(),
+    "saved-matches",
+    code.name
+  );
+
+  const svgToSave = EmbedDataInSvg(code);
+
+  await invoke("save_qr_svg", {
+    svg: svgToSave,
+    filePath,
+  });
+}
+
+export async function createQrCodeFromImportedData(data: string) {
+  const [_prefix, type, schemaHash, compressed] = data.split(":");
+
+  const qrString = buildQrString(type as QrType, schemaHash, compressed);
+  const qrSvg = await invoke<string>("generate_qr_code", { data: qrString });
+  const fileName = generateQrFileName(type as QrType, schemaHash, "id");
+
+  return { name: fileName, data: qrString, image: qrSvg };
+}

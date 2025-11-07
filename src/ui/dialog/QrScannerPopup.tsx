@@ -7,12 +7,13 @@ import {
   ListItemText,
   ListItemIcon,
   Button,
-  Skeleton
+  Skeleton,
 } from "@mui/material";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import { Result } from "@zxing/library";
 import { useEffect, useRef, useState } from "react";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
+import { createQrCodeFromImportedData, saveQrCode, validateQR } from "../../utils/QrUtils";
 
 /**
  * Props for the qr scanner
@@ -20,7 +21,7 @@ import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 interface QrScannerPopupProps {
   open: boolean;
   onClose: () => void;
-  onScanListUpdate: (list: string[]) => void;
+  onImport: () => void;
 }
 
 interface CameraDevice {
@@ -71,7 +72,7 @@ async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
 }
 
 export default function QrScannerPopup(props: QrScannerPopupProps) {
-  const { open, onClose, onScanListUpdate } = props;
+  const { open, onClose, onImport } = props;
   const [activeCamera, setActiveCamera] = useState<CameraDevice>();
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [hasCamera, setHasCamera] = useState(false);
@@ -81,14 +82,29 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
 
   const addToList = (result: Result) => {
     const text = result.getText();
-    setResults((currentResults) => {
-      if (currentResults.includes(text)) {
-        return currentResults;
-      }
-      const newResults = [...currentResults, text];
-      onScanListUpdate(newResults);
-      return newResults;
-    });
+    if (validateQR(text)) {
+      setResults((currentResults) => {
+        if (currentResults.includes(text)) {
+          return currentResults;
+        }
+        const newResults = [...currentResults, text];
+        return newResults;
+      });
+    }
+  };
+
+  const importQRList = async () => {
+    if (!results || results.length === 0) return;
+  
+    await Promise.all(
+      results.map(async (code) => {
+        const savedCode: QrCode = await createQrCodeFromImportedData(code);
+        await saveQrCode(savedCode);
+      })
+    );
+  
+    onImport();
+    onClose();
   };
 
   // Initialize available cameras when opened
@@ -141,6 +157,7 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
     })();
 
     return () => {
+      if (!controls) return;
       controls.stop();
       readerRef.current = null;
     };
@@ -161,8 +178,9 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
       <Box sx={{ p: 2 }}>
         {!hasCamera ? (
           <Skeleton
-            variant="rectangular"
-            sx={{ borderRadius: 3, width: "100%", aspectRatio: "1/1" }}
+            variant="rounded"
+            width={"100%"}
+            sx={{ borderRadius: 3, aspectRatio: "1/1" }}
           />
         ) : (
           <>
@@ -208,7 +226,7 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
                     <Box
                       key={i}
                       sx={{
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: "rgba(255, 255, 255, 0.5)",
                         position: "absolute",
                         width: 40,
                         height: 40,
@@ -264,7 +282,12 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
           ))}
         </List>
 
-        <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={onClose}>
+        <Button
+          variant="contained"
+          fullWidth
+          sx={{ mt: 2 }}
+          onClick={importQRList}
+        >
           Import All
         </Button>
       </Box>
