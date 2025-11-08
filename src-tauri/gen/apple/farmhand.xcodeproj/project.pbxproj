@@ -27,6 +27,7 @@
 		12117A6AF797313D39AB9802 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		14CF6C75DE8BC1E3418EDAF5 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		23C85FB9AE5F28CAED182099 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		24309DA90730B982CDB84AEA /* qr.rs */ = {isa = PBXFileReference; path = qr.rs; sourceTree = "<group>"; };
 		354FC1440B313EEC00DCEE8C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		41498AAF6D296BA9E0CE4F4E /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
 		4376FEDEF21D3462D84D89AD /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -34,10 +35,13 @@
 		454FF4FF65E221FDCF03A3DD /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		4631B9BEFDF73760861B915B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		473A7DBAFEDB2EACF84C0CB7 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		69AAE88C48D97A1331F22283 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		751397B8024189BC18D38994 /* util.rs */ = {isa = PBXFileReference; path = util.rs; sourceTree = "<group>"; };
 		766692111BA44FF302EF6A26 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		8EF57FB8ED132F756DB09128 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		8FAFDF900258E14D7AEE2ED8 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		AA50900835B2D1783637D869 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		AE5976D585D618B6DBC13D60 /* commands.rs */ = {isa = PBXFileReference; path = commands.rs; sourceTree = "<group>"; };
 		C397822175A4051FF4621841 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		EDC069172B8BD7035A53504F /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -100,6 +104,16 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		50C6E65226438D541DA2269F /* core */ = {
+			isa = PBXGroup;
+			children = (
+				69AAE88C48D97A1331F22283 /* mod.rs */,
+				24309DA90730B982CDB84AEA /* qr.rs */,
+				751397B8024189BC18D38994 /* util.rs */,
+			);
+			path = core;
+			sourceTree = "<group>";
+		};
 		74D91A15D7C8B234570A9859 /* Externals */ = {
 			isa = PBXGroup;
 			children = (
@@ -128,8 +142,10 @@
 		B740687B492CBD79CE9C1DA1 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				AE5976D585D618B6DBC13D60 /* commands.rs */,
 				110523F1157CA0C6169E3098 /* lib.rs */,
 				41498AAF6D296BA9E0CE4F4E /* main.rs */,
+				50C6E65226438D541DA2269F /* core */,
 			);
 			name = src;
 			path = ../../src;

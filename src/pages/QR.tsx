@@ -89,7 +89,7 @@ export default function QRPage() {
       </Fab>
       <Box sx={{ px: 3, pt: 2, justifyContent: "center" }}>
         <Grid container spacing={2}>
-          {qrCodes!.map((qr, i) => {
+          {qrCodes? qrCodes.map((qr, i) => {
             console.log(qr);
             return (
               <Grid size={{ xs: 6, sm: 3, md: 2, lg: 1 }} key={i}>
@@ -121,7 +121,7 @@ export default function QRPage() {
                 </Card>
               </Grid>
             );
-          })}
+          }) : null}
         </Grid>
       </Box>
       <QrScannerPopup

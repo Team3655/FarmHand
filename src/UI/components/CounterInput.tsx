@@ -35,7 +35,7 @@ export default function CounterInput(props: CounterInputProps) {
     <Stack
       direction={"row"}
       alignItems={"center"}
-      justifyContent={"space-around"}
+      justifyContent={"center"}
       width={"70%"}
     >
       <Button
@@ -49,7 +49,7 @@ export default function CounterInput(props: CounterInputProps) {
       >
         <RemoveIcon />
       </Button>
-      <Typography variant="h5">{value}</Typography>
+      <Typography variant="h5" sx={{ mx: 2 }}>{value}</Typography>
       <Button
         onClick={increment}
         variant="contained"

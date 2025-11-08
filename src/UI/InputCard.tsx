@@ -1,6 +1,6 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 import { useValidation } from "../context/ValidationContext";
 import { useScoutData } from "../context/ScoutDataContext";
 
@@ -19,7 +19,7 @@ interface InputCardProps {
  * @param props {@link InputCardProps}
  * @returns A Card wrapper for all the input components
  */
-export default function InputCard(props: InputCardProps) {
+function InputCard(props: InputCardProps) {
   const { label, required, errorMessage, children } = props;
   const { valid, touched } = useValidation();
   const { submitted } = useScoutData();
@@ -43,6 +43,8 @@ export default function InputCard(props: InputCardProps) {
         backgroundColor: theme.palette.background.paper,
         transition: "border-color 0.2s ease, background-color 0.2s ease",
         alignContent: "center",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <CardContent
@@ -51,7 +53,7 @@ export default function InputCard(props: InputCardProps) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "flex-start",
-          height: "100%",
+          flexGrow: 1,
         }}
       >
         {showError && (
@@ -79,3 +81,5 @@ export default function InputCard(props: InputCardProps) {
     </Card>
   );
 }
+
+export default memo(InputCard);

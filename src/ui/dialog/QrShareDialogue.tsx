@@ -8,12 +8,13 @@ import {
   Slide,
   IconButton,
   useTheme,
+  useMediaQuery,
+  Box,
 } from "@mui/material";
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import CopyIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadIcon from "@mui/icons-material/DownloadRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
-import { TransitionProps } from "@mui/material/transitions";
 import { decodeQR } from "../../utils/QrUtils";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 
@@ -29,19 +30,11 @@ interface QrExportDialogProps {
   allowSaveToHistory?: boolean;
 }
 
-const Transition = forwardRef(function Transition(
-  props: TransitionProps & {
-    children: React.ReactElement<any, any>;
-  },
-  ref: React.Ref<unknown>
-) {
-  return <Slide direction="down" ref={ref} {...props} />;
-});
-
 export default function QrShareDialog(props: QrExportDialogProps) {
   const { open, onClose, qrCodeData, handleSaveQR, allowSaveToHistory } = props;
   const theme = useTheme();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const isLandscape = useMediaQuery("(orientation: landscape)");
 
   const copy = async () => {
     setSnackbarOpen(true);
@@ -52,62 +45,92 @@ export default function QrShareDialog(props: QrExportDialogProps) {
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} slots={{ transition: Transition }}>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth={isLandscape ? "sm" : "xs"}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+            backgroundColor: theme.palette.background.paper,
+            p: isLandscape ? 3 : 2,
+            maxHeight: "90dvh",
+            display: "flex",
+            flexDirection: isLandscape ? "row" : "column",
+            justifyContent: "center",
+            alignItems: "center",
+            boxSizing: "border-box",
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          },
+        }}
+      >
         <DialogContent
           sx={{
             display: "flex",
-            justifyContent: "center",
+            flexDirection: isLandscape ? "row" : "column",
             alignItems: "center",
-            backgroundColor: theme.palette.background.paper,
+            justifyContent: "center",
+            gap: 3,
           }}
         >
-          <Stack direction={"column"} height={"100%"} spacing={3}>
-            <Typography variant="subtitle1">
-              Scan to import this match to another device
-            </Typography>
-            {qrCodeData ? (
+          {/* QR Image */}
+          {qrCodeData ? (
+            <Box
+              sx={{
+                flexShrink: 0,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <img
                 src={`data:image/svg+xml;base64,${btoa(qrCodeData.image)}`}
                 alt="QR Code"
-                style={{ borderRadius: 20 }}
+                style={{
+                  width: isLandscape ? "40vh" : "70vw",
+                  maxWidth: "300px",
+                  borderRadius: 20,
+                }}
               />
-            ) : (
-              <Typography
-                variant="subtitle1"
-                sx={{ mt: 2, mb: 1, color: theme.palette.error.main }}
-              >
-                Failed to load QR code.
-              </Typography>
-            )}
-            <Stack
-              direction={"row"}
-              width={"100%"}
-              justifyContent={"space-evenly"}
+            </Box>
+          ) : (
+            <Typography
+              variant="subtitle1"
+              sx={{ color: theme.palette.error.main }}
             >
+              Failed to load QR code.
+            </Typography>
+          )}
+
+          {/* Text + Buttons */}
+          <Stack spacing={2} alignItems="center">
+            <Typography variant="subtitle1" textAlign="center">
+              Scan to import this match to another device
+            </Typography>
+
+            <Stack direction="row" spacing={2}>
               <Button variant="contained" color="secondary" onClick={copy}>
-                <CopyIcon sx={{ mr: 1 }} /> copy
+                <CopyIcon sx={{ mr: 1 }} /> Copy
               </Button>
               <Button variant="contained" color="secondary">
-                <DownloadIcon sx={{ mr: 1 }} />
-                download
+                <DownloadIcon sx={{ mr: 1 }} /> Download
               </Button>
             </Stack>
+
             {allowSaveToHistory && (
               <Button
-                autoFocus
                 color="inherit"
                 variant="contained"
                 sx={{
                   backgroundColor: theme.palette.primary.dark,
                   width: "100%",
                 }}
-                onClick={() => {
-                  if (handleSaveQR) {
-                    handleSaveQR();
-                  }
-                }}
+                onClick={handleSaveQR}
               >
-                Save to match history
+                Save to Match History
               </Button>
             )}
           </Stack>

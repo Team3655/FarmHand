@@ -11,6 +11,7 @@ import {
   ListItemText,
   Box,
   Divider,
+  useMediaQuery,
 } from "@mui/material";
 import useDrawer from "./hooks/useDrawer";
 import MenuIcon from "@mui/icons-material/MenuRounded";
@@ -18,13 +19,14 @@ import HomeIcon from "@mui/icons-material/HomeRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { HashRouter, Route, Routes, useNavigate } from "react-router";
-import Home from "./pages/Home";
-import Settings from "./pages/Settings";
-import Scout from "./pages/Scout";
 import { useTheme } from "@mui/material/styles";
-import QRPage from "./pages/QR";
+
+const Home = React.lazy(() => import("./pages/Home"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const Scout = React.lazy(() => import("./pages/Scout"));
+const QRPage = React.lazy(() => import("./pages/QR"));
 
 const pages = [
   { title: "Home", icon: <HomeIcon />, component: <Home />, path: "/" },
@@ -54,12 +56,25 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { drawerOpen, toggleDrawer } = useDrawer();
   const navigate = useNavigate();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
     <>
+      <Box
+        sx={{
+          width: "100%",
+          backgroundColor: theme.palette.primary.dark,
+          height: "env(safe-area-inset-top, 0px)",
+        }}
+      />
+
       <AppBar
         position="static"
-        sx={{ backgroundColor: theme.palette.primary.main }}
+        sx={{
+          backgroundColor: theme.palette.primary.main,
+          paddingLeft: "env(safe-area-inset-left, 0px)",
+          paddingRight: "env(safe-area-inset-right, 0px)",
+        }}
       >
         <Toolbar>
           <IconButton
@@ -72,22 +87,38 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h3" sx={{ flexGrow: 1 }}>
+          <Typography variant="h4" sx={{ flexGrow: 1 }}>
             FarmHand
           </Typography>
         </Toolbar>
       </AppBar>
+
       <Drawer
+        anchor="left"
         open={drawerOpen}
         onClose={toggleDrawer(false)}
-        sx={{ backdropFilter: "blur(2px)" }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: isMobile ? "75vw" : 300,
+              backgroundColor: theme.palette.background.default,
+              display: "flex",
+              flexDirection: "column",
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              boxSizing: "border-box",
+            },
+          },
+        }}
       >
         <Box
           sx={{
-            width: "25vw",
             height: "100%",
             display: "flex",
             flexDirection: "column",
+            backgroundColor: theme.palette.background.default,
+            paddingLeft: "env(safe-area-inset-left, 0px)",
+            paddingRight: "env(safe-area-inset-right, 0px)",
           }}
           onClick={toggleDrawer(false)}
         >
@@ -108,7 +139,9 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </ListItem>
               ))}
           </List>
-          <Box sx={{ marginTop: "auto" }}>
+
+          {/* Bottom section */}
+          <Box sx={{ mt: "auto" }}>
             <Divider />
             <List>
               <ListItem disablePadding>
@@ -123,7 +156,17 @@ function Layout({ children }: { children: React.ReactNode }) {
           </Box>
         </Box>
       </Drawer>
-      {children}
+
+      {/* Page content */}
+      <Box
+        sx={{
+          paddingLeft: "env(safe-area-inset-left, 0px)",
+          paddingRight: "env(safe-area-inset-right, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        {children}
+      </Box>
     </>
   );
 }
@@ -154,11 +197,15 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
-        {pages.map((page) => (
+        {pages.map(({ path, component }) => (
           <Route
-            key={page.title}
-            path={page.path}
-            element={<Layout>{page.component}</Layout>}
+            key={path}
+            path={path}
+            element={
+              <Layout>
+                <Suspense fallback={<Typography sx={{ p: 3 }}>Loading page...</Typography>}>{component}</Suspense>
+              </Layout>
+            }
           />
         ))}
       </Routes>
