@@ -24,6 +24,7 @@ import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import QrShareDialog from "../ui/dialog/QrShareDialogue";
 import useDialog from "../hooks/useDialog";
 import { QrCodeBuilder, saveQrCode } from "../utils/QrUtils";
+import { getFieldValueByName } from "../utils/GeneralUtils";
 
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
@@ -59,7 +60,12 @@ export default function Scout() {
   const handleGenerateQr = async () => {
     const schemaHash = hash ?? "000000";
     const minifiedJSON = Array.from(matchData.values());
-    const qr = await QrCodeBuilder.build.MATCH(schemaHash, minifiedJSON, "id");
+    const teamNumber = getFieldValueByName("Team Number", schema!, matchData);
+    const matchNumber = getFieldValueByName("Match Number", schema!, matchData);
+    const qr = await QrCodeBuilder.build.MATCH(schemaHash, minifiedJSON, [
+      teamNumber!,
+      matchNumber!,
+    ]);
     qrCodeData.current = qr;
     openQrPopup();
   };
@@ -68,7 +74,7 @@ export default function Scout() {
     if (!qrCodeData.current) return;
 
     await saveQrCode(qrCodeData.current);
-    
+
     closeQrPopup();
   };
 

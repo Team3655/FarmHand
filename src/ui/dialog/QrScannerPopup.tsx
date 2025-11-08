@@ -13,7 +13,12 @@ import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import { Result } from "@zxing/library";
 import { useEffect, useRef, useState } from "react";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
-import { createQrCodeFromImportedData, saveQrCode, validateQR } from "../../utils/QrUtils";
+import {
+  createQrCodeFromImportedData,
+  saveQrCode,
+  validateQR,
+} from "../../utils/QrUtils";
+import { useSchema } from "../../context/SchemaContext";
 
 /**
  * Props for the qr scanner
@@ -73,6 +78,7 @@ async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
 
 export default function QrScannerPopup(props: QrScannerPopupProps) {
   const { open, onClose, onImport } = props;
+  const { schema } = useSchema();
   const [activeCamera, setActiveCamera] = useState<CameraDevice>();
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [hasCamera, setHasCamera] = useState(false);
@@ -95,14 +101,14 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
 
   const importQRList = async () => {
     if (!results || results.length === 0) return;
-  
+
     await Promise.all(
       results.map(async (code) => {
-        const savedCode: QrCode = await createQrCodeFromImportedData(code);
+        const savedCode: QrCode = await createQrCodeFromImportedData(code, schema!);
         await saveQrCode(savedCode);
       })
     );
-  
+
     onImport();
     onClose();
   };

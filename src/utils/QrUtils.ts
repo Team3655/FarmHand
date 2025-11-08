@@ -1,15 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
-import { compressData, decompressData, EmbedDataInSvg } from "./GeneralUtils";
+import {
+  compressData,
+  decompressData,
+  EmbedDataInSvg,
+  getFieldValueByName,
+  matchDataJsonToMap,
+} from "./GeneralUtils";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
 import { BaseDirectory, mkdir } from "@tauri-apps/plugin-fs";
 
 export type QrType = "match" | "schema" | "theme" | "settings";
 export type EncodedQr = string;
-
-export interface Schema {
-  name: string;
-  sections: any[];
-}
 
 export interface QrCode {
   name: string;
@@ -23,7 +24,24 @@ export interface DecodedQr {
   data: any;
 }
 
+type FieldValue = string | number | boolean | null;
+
 const APP_PREFIX = "frmhnd";
+
+export function reconstructMatchDataFromArray(
+  schema: Schema,
+  values: FieldValue[]
+): Record<string, any> {
+  const reconstructed: Record<string, any> = {};
+  schema.sections.forEach((section) => {
+    section.fields.forEach((field, index) => {
+      const rawValue = values[index] !== "" ? values[index] : "*";
+      reconstructed[field.id] = rawValue === "*" ? "" : rawValue;
+    });
+  });
+
+  return reconstructed;
+}
 
 /**
  * Builds a string that can then be encoded into qr
@@ -70,20 +88,14 @@ export async function decodeQR(
 }
 
 /**
- * Generates a consistent file name for the qr
- * @param type The type of data encoded into the qr
- * @param schemaHash an 8 character representation of the users current schema
- * @param identifier a unique string for this code
- * @returns
+ * Generates the name for a qr file
+ * @param qrNameInfo an array of strings to include in the filename
+ * @returns a string with the file name
  */
-function generateQrFileName(
-  type: QrType,
-  schemaHash: string,
-  identifier?: string
-) {
-  const timestamp = Date.now();
-  const safeId = identifier ? `-${identifier}` : "";
-  return `${type}-${schemaHash}${safeId}-${timestamp}.svg`;
+function generateQrFileName(qrNameInfo: string[]): string {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const infoString = qrNameInfo.join("-");
+  return `${infoString}-${timestamp}.svg`;
 }
 
 /**
@@ -98,12 +110,12 @@ async function writeDataToQrCode(
   type: QrType,
   schemaHash: string,
   payload: any,
-  identifier?: string
+  qrNameInfo: string[]
 ): Promise<QrCode> {
   const compressed = await compressData(payload);
   const qrString = buildQrString(type, schemaHash, compressed);
   const qrSvg = await invoke<string>("generate_qr_code", { data: qrString });
-  const fileName = generateQrFileName(type, schemaHash, identifier);
+  const fileName = generateQrFileName(qrNameInfo);
 
   return { name: fileName, data: qrString, image: qrSvg };
 }
@@ -112,11 +124,10 @@ async function writeDataToQrCode(
  * Builder tool for qr codes, will eventually include all types and other helpful build functions
  */
 export const QrCodeBuilder = {
-  buildFileName: (type: QrType, schemaHash: string, identifier?: string) =>
-    generateQrFileName(type, schemaHash, identifier),
+  buildFileName: (qrNameInfo: string[]) => generateQrFileName(qrNameInfo),
   build: {
-    MATCH: async (schemaHash: string, payload: any, id?: string) =>
-      await writeDataToQrCode("match", schemaHash, payload, id),
+    MATCH: async (schemaHash: string, payload: any, qrNameInfo: string[]) =>
+      await writeDataToQrCode("match", schemaHash, payload, qrNameInfo),
   },
 };
 
@@ -149,12 +160,20 @@ export async function saveQrCode(code: QrCode) {
   });
 }
 
-export async function createQrCodeFromImportedData(data: string) {
+export async function createQrCodeFromImportedData(
+  data: string,
+  schema: Schema
+) {
   const [_prefix, type, schemaHash, compressed] = data.split(":");
 
   const qrString = buildQrString(type as QrType, schemaHash, compressed);
   const qrSvg = await invoke<string>("generate_qr_code", { data: qrString });
-  const fileName = generateQrFileName(type as QrType, schemaHash, "id");
-
+  const decoded = await decodeQR(data);
+  console.log(decoded);
+  const matchDataJSON = reconstructMatchDataFromArray(schema, decoded.data);
+  const matchData = matchDataJsonToMap(matchDataJSON)
+  const teamNumber = getFieldValueByName("Team Number", schema, matchData);
+  const matchNumber = getFieldValueByName("Match Number", schema, matchData);
+  const fileName = generateQrFileName([teamNumber!, matchNumber!]);
   return { name: fileName, data: qrString, image: qrSvg };
 }

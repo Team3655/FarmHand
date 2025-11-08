@@ -2,6 +2,7 @@
  * Holds data about a specific schema and all of its components
  */
 interface Schema {
+  name: string;
   sections: SectionData[];
 }
 

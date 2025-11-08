@@ -23,8 +23,7 @@ interface DynamicComponentProps {
  */
 export default function DynamicComponent(props: DynamicComponentProps) {
   const { setValid, setTouched } = useValidation();
-  const { addMatchData, addError, removeError, getMatchData } =
-    useScoutData();
+  const { addMatchData, addError, removeError, getMatchData } = useScoutData();
   const { component } = props;
 
   const [value, setValue] = useState<any>(null);
@@ -74,7 +73,7 @@ export default function DynamicComponent(props: DynamicComponentProps) {
 
     if (isMounted) {
       setValue(initial);
-
+      addMatchData(component.id, initial);
       if (component.required) {
         setValid(!isInvalid);
         if (isInvalid) {
