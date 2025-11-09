@@ -36,7 +36,6 @@ export default function CounterInput(props: CounterInputProps) {
       direction={"row"}
       alignItems={"center"}
       justifyContent={"center"}
-      width={"70%"}
     >
       <Button
         onClick={decrement}

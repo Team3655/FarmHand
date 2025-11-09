@@ -34,16 +34,13 @@ export default function DropdownInput(props: DropdownInputProps) {
   };
 
   return (
-    <FormControl sx={{ width: "70%" }}>
+    <FormControl>
       <InputLabel
-        id="demo-simple-select-label"
         color={showError ? "error" : "secondary"}
       >
         {label}
       </InputLabel>
       <Select
-        labelId="demo-simple-select-label"
-        id="demo-simple-select"
         value={value}
         label={label}
         onChange={handleChange}

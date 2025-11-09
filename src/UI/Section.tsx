@@ -45,7 +45,7 @@ export default function Section(props: SectionProps) {
         square
         disableGutters
         onChange={toggleActive}
-        elevation={0}
+        elevation={active ? 2 : 1}  // Proper elevation for Material Design
         sx={{
           p: 3,
           minWidth: "fit-content",
@@ -53,13 +53,14 @@ export default function Section(props: SectionProps) {
           display: "flex",
           alignContent: "center",
           flexDirection: "column",
-          backgroundColor: theme.palette.background.paper,
+          backgroundColor: theme.palette.background.default,  // Use darker default background
           borderRadius: 2,
           borderColor: showErrorHighlight
             ? theme.palette.error.main
-            : theme.palette.divider,
-          borderWidth: 2,
+            : "transparent",  // Only show border on error
+          borderWidth: showErrorHighlight ? 2 : 0,
           borderStyle: "solid",
+          transition: "all 0.2s ease",
           "&:before": {
             display: "none",
           },

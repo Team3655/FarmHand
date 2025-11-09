@@ -2,9 +2,7 @@ import { createTheme } from "@mui/material/styles";
 import {
   anton,
   impact,
-  antonio,
   baskervville,
-  libreBaskervville,
 } from "../../utils/Fonts";
 
 const TractorDarkTheme = createTheme({
@@ -68,30 +66,30 @@ const TractorDarkTheme = createTheme({
       fontFamily: '"Impact", "Anton"',
     },
     h4: {
-      fontFamily: '"Anton", "Antonio"',
+      fontFamily: '"Anton"',
     },
     h5: {
-      fontFamily: "Antonio",
+      fontFamily: "Anton",
       fontWeight: 500,
     },
     h6: {
-      fontFamily: "Antonio",
+      fontFamily: "Anton",
       fontWeight: 500,
     },
     button: {
-      fontFamily: "Antonio",
-      fontWeight: 500,
+      fontFamily: "Anton",
+      fontWeight: 300,
     },
     subtitle1: {
-      fontFamily: "Antonio",
-      fontWeight: 500,
+      fontFamily: "Anton",
+      fontWeight: 200,
     },
     subtitle2: {
-      fontFamily: "Antonio",
-      fontWeight: 400,
+      fontFamily: "Anton",
+      fontWeight: 100,
     },
     body1: {
-      fontFamily: '"Baskervville", "Libre Baskervville"',
+      fontFamily: '"Baskervville"',
       fontWeight: 300,
     },
   },
@@ -109,20 +107,37 @@ const TractorDarkTheme = createTheme({
         }
         
         @font-face {
-          font-family: 'Antonio';
-          src: ${antonio.src};
-        }
-        
-        @font-face {
           font-family: 'Baskervville';
           src: ${baskervville.src};
         }
-
-        @font-face {
-          font-family: 'Libre-Baskerville';
-          src: ${libreBaskervville.src};
-        }
       `,
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: ({ theme, ownerState }) => {
+          const elevationOverlays: { [key: number]: string } = {
+            0: 'rgba(255, 255, 255, 0)',
+            1: 'rgba(255, 255, 255, 0.03)',
+            2: 'rgba(255, 255, 255, 0.04)',
+            3: 'rgba(255, 255, 255, 0.05)',
+            4: 'rgba(255, 255, 255, 0.06)',
+            6: 'rgba(255, 255, 255, 0.08)',
+            8: 'rgba(255, 255, 255, 0.09)',
+            12: 'rgba(255, 255, 255, 0.11)',
+            16: 'rgba(255, 255, 255, 0.12)',
+            24: 'rgba(255, 255, 255, 0.14)',
+          };
+
+          const elevation = ownerState.elevation || 0;
+          const overlay = elevationOverlays[elevation] || 'rgba(255, 255, 255, 0)';
+
+          return theme.palette.mode === 'dark'
+            ? {
+                backgroundImage: `linear-gradient(${overlay}, ${overlay})`,
+              }
+            : {};
+        },
+      },
     },
   },
 });

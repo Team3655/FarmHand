@@ -30,11 +30,12 @@ function InputCard(props: InputCardProps) {
   return (
     <Card
       variant="outlined"
+      elevation={0}
       sx={{
         borderColor: showError
           ? theme.palette.error.main
           : theme.palette.divider,
-        borderWidth: 2,
+        borderWidth: showError ? 2 : 1,
         borderStyle: "solid",
         borderRadius: 2,
         p: 2,
@@ -57,7 +58,7 @@ function InputCard(props: InputCardProps) {
         }}
       >
         {showError && (
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ mb: 1 }} color="error">
             {errorMessage ?? "This field is required"}
           </Typography>
         )}

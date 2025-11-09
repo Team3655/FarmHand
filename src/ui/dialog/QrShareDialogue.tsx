@@ -50,20 +50,23 @@ export default function QrShareDialog(props: QrExportDialogProps) {
         onClose={onClose}
         fullWidth
         maxWidth={isLandscape ? "sm" : "xs"}
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            overflow: "hidden",
-            backgroundColor: theme.palette.background.paper,
-            p: isLandscape ? 3 : 2,
-            maxHeight: "90dvh",
-            display: "flex",
-            flexDirection: isLandscape ? "row" : "column",
-            justifyContent: "center",
-            alignItems: "center",
-            boxSizing: "border-box",
-            paddingTop: "env(safe-area-inset-top, 0px)",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        slotProps={{
+          paper: {
+            elevation: 24,
+            sx: {
+              borderRadius: 3,
+              overflow: "hidden",
+              backgroundColor: theme.palette.background.paper,
+              p: isLandscape ? 3 : 2,
+              maxHeight: "90dvh",
+              display: "flex",
+              flexDirection: isLandscape ? "row" : "column",
+              justifyContent: "center",
+              alignItems: "center",
+              boxSizing: "border-box",
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            },
           },
         }}
       >
@@ -141,6 +144,7 @@ export default function QrShareDialog(props: QrExportDialogProps) {
         open={snackbarOpen}
         onClose={() => setSnackbarOpen(false)}
         slots={{ transition: Slide }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         slotProps={{
           content: {
             sx: {

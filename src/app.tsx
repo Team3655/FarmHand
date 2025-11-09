@@ -20,7 +20,13 @@ import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import React, { Suspense, useEffect } from "react";
-import { HashRouter, Route, Routes, useNavigate } from "react-router";
+import {
+  HashRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { useTheme } from "@mui/material/styles";
 
 const Home = React.lazy(() => import("./pages/Home"));
@@ -57,6 +63,21 @@ function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const location = useLocation();
+
+  const selectedItemSx = {
+    "&.Mui-selected": {
+      backgroundColor: "transparent",
+      borderLeft: `4px solid ${theme.palette.secondary.main}`,
+      paddingLeft: "12px",
+      "&:hover": {
+        backgroundColor: theme.palette.action.hover,
+      },
+      "& .MuiListItemIcon-root, & .MuiTypography-root": {
+        color: theme.palette.secondary.main,
+      },
+    },
+  };
 
   return (
     <>
@@ -67,9 +88,9 @@ function Layout({ children }: { children: React.ReactNode }) {
           height: "env(safe-area-inset-top, 0px)",
         }}
       />
-
       <AppBar
         position="static"
+        elevation={4}
         sx={{
           backgroundColor: theme.palette.primary.main,
           paddingLeft: "env(safe-area-inset-left, 0px)",
@@ -97,6 +118,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         anchor="left"
         open={drawerOpen}
         onClose={toggleDrawer(false)}
+        elevation={16}
         slotProps={{
           paper: {
             sx: {
@@ -116,7 +138,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            backgroundColor: theme.palette.background.default,
             paddingLeft: "env(safe-area-inset-left, 0px)",
             paddingRight: "env(safe-area-inset-right, 0px)",
           }}
@@ -127,7 +148,11 @@ function Layout({ children }: { children: React.ReactNode }) {
               .filter((item) => item.title !== "Settings")
               .map((item) => (
                 <ListItem key={item.title} disablePadding>
-                  <ListItemButton onClick={() => navigate(item.path)}>
+                  <ListItemButton
+                    onClick={() => navigate(item.path)}
+                    selected={location.pathname === item.path}
+                    sx={selectedItemSx}
+                  >
                     <ListItemIcon>{item.icon}</ListItemIcon>
                     <ListItemText
                       disableTypography
@@ -145,7 +170,11 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Divider />
             <List>
               <ListItem disablePadding>
-                <ListItemButton onClick={() => navigate("/settings")}>
+                <ListItemButton
+                  onClick={() => navigate("/settings")}
+                  selected={location.pathname === "/settings"}
+                  sx={selectedItemSx}
+                >
                   <ListItemIcon>
                     <SettingsIcon />
                   </ListItemIcon>
@@ -203,7 +232,13 @@ export default function App() {
             path={path}
             element={
               <Layout>
-                <Suspense fallback={<Typography sx={{ p: 3 }}>Loading page...</Typography>}>{component}</Suspense>
+                <Suspense
+                  fallback={
+                    <Typography sx={{ p: 3 }}>Loading page...</Typography>
+                  }
+                >
+                  {component}
+                </Suspense>
               </Layout>
             }
           />

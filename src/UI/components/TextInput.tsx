@@ -44,7 +44,6 @@ export default function TextInput(props: TextInputProps) {
       maxRows={5}
       slotProps={{ htmlInput: { maxLength: 75 } }}
       sx={{
-        width: "70%",
         "& legend": {
           transition: "unset",
         },

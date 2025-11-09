@@ -193,21 +193,24 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
       onClose={onClose}
       fullWidth
       maxWidth={isLandscape ? "md" : "xs"}
-      PaperProps={{
-        sx: {
-          display: "flex",
-          flexDirection: isLandscape ? "row" : "column",
-          justifyContent: "center",
-          alignItems: "stretch",
-          backgroundColor: theme.palette.background.default,
-          borderRadius: 3,
-          height: isLandscape ? "80dvh" : "auto",
-          maxHeight: "90dvh",
-          overflow: "hidden",
-          p: isLandscape ? 2 : 0,
-          boxSizing: "border-box",
-          paddingTop: "env(safe-area-inset-top, 0px)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      slotProps={{
+        paper: {
+          elevation: 24,
+          sx: {
+            display: "flex",
+            flexDirection: isLandscape ? "row" : "column",
+            justifyContent: "center",
+            alignItems: "stretch",
+            backgroundColor: theme.palette.background.default,
+            borderRadius: 3,
+            height: isLandscape ? "80dvh" : "auto",
+            maxHeight: "90dvh",
+            overflow: "hidden",
+            p: isLandscape ? 2 : 0,
+            boxSizing: "border-box",
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          },
         },
       }}
     >

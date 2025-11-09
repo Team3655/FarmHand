@@ -29,13 +29,8 @@ import { getFieldValueByName } from "../utils/GeneralUtils";
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
   const theme = useTheme();
-  const {
-    errors,
-    clearMatchData,
-    setSubmitted,
-    clearErrors,
-    getMatchDataMap,
-  } = useScoutData();
+  const { errors, clearMatchData, setSubmitted, clearErrors, getMatchDataMap } =
+    useScoutData();
 
   const [resetKey, setResetKey] = useState<Key>(0);
   const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
@@ -90,17 +85,17 @@ export default function Scout() {
         display="flex"
         justifyContent="center"
         alignItems="center"
-        height="80vh"
+        minHeight="400px"
       >
-        <CircularProgress />
+        <CircularProgress size={60} />
       </Box>
     );
   }
   return (
     <>
       <Box sx={{ p: 3, justifyContent: "center" }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>
-          Scouting - {schemaName}
+        <Typography variant="h3" sx={{ mb: 3 }}>
+          {schemaName}
         </Typography>
         <Stack spacing={3} key={resetKey}>
           {schemaData!.sections.map((section, index) => (
@@ -116,7 +111,7 @@ export default function Scout() {
         >
           <Button
             variant="contained"
-            color="inherit"
+            color="warning"
             sx={{ mt: 3 }}
             onClick={openResetPopup}
           >
@@ -136,7 +131,11 @@ export default function Scout() {
       </Box>
 
       {/*Page reload confirmation popup*/}
-      <Dialog open={showResetPopup} onClose={closeResetPopup}>
+      <Dialog
+        open={showResetPopup}
+        onClose={closeResetPopup}
+        sx={{ elevation: 24 }}
+      >
         <DialogTitle
           sx={{
             display: "flex",
@@ -147,17 +146,21 @@ export default function Scout() {
           Are you sure you want to reset the form?
         </DialogTitle>
         <DialogActions>
-          <Button onClick={closeResetPopup} color="primary" variant="contained">
-            Cancel
-          </Button>
           <Button onClick={handleReset} color="error" variant="contained">
             Reset
+          </Button>
+          <Button onClick={closeResetPopup} color="primary" variant="text">
+            Cancel
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Form error popup */}
-      <Dialog open={showErrorPopup} onClose={closeErrorPopup}>
+      <Dialog
+        open={showErrorPopup}
+        onClose={closeErrorPopup}
+        sx={{ elevation: 24 }}
+      >
         <DialogTitle
           sx={{
             display: "flex",

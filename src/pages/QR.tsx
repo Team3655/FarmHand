@@ -1,5 +1,6 @@
 import { Box, Card, Fab, Grid, Typography, useTheme } from "@mui/material";
 import QrScanIcon from "@mui/icons-material/QrCodeScannerRounded";
+import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import { useState } from "react";
 import {
   exists,
@@ -49,7 +50,8 @@ const fetchQrCodes = async () => {
 
 export default function QRPage() {
   const theme = useTheme();
-  const [qrCodes, loadingQr, errorFetchingQr, refetchQrCodes] = useAsyncFetch(fetchQrCodes);
+  const [qrCodes, loadingQr, errorFetchingQr, refetchQrCodes] =
+    useAsyncFetch(fetchQrCodes);
   const [activeCode, setActiveCode] = useState<QrCode | null>(null);
   const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
   const [scannerOpen, openScanner, closeScanner] = useDialog();
@@ -81,53 +83,103 @@ export default function QRPage() {
         color="secondary"
         size="large"
         variant="extended"
-        sx={{ position: "fixed", bottom: 16, right: 16 }}
+        sx={{
+          position: "fixed",
+          bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+          right: "calc(16px + env(safe-area-inset-right, 0px))",
+          color: theme.palette.secondary.contrastText,
+          backgroundColor: theme.palette.secondary.main,
+          "&:hover": {
+            backgroundColor: theme.palette.secondary.dark,
+          },
+        }}
         onClick={openScanner}
       >
         <QrScanIcon sx={{ mr: 1 }} />
         Scan
       </Fab>
       <Box sx={{ px: 3, pt: 2, justifyContent: "center" }}>
-        <Grid container spacing={2}>
-          {qrCodes? qrCodes.map((qr, i) => {
-            console.log(qr);
-            return (
-              <Grid size={{ xs: 6, sm: 3, md: 2, lg: 1 }} key={i}>
-                <Card
-                  sx={{
-                    borderColor: theme.palette.divider,
-                    borderWidth: 2,
-                    borderStyle: "solid",
-                    borderRadius: 2,
-                    p: 2,
-                    maxWidth: "fit-content",
-                    height: "100%",
-                    backgroundColor: theme.palette.background.paper,
-                    transition:
-                      "border-color 0.2s ease, background-color 0.2s ease",
-                    alignContent: "center",
-                    ":hover": {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  }}
-                  onClick={() => selectImage(qr)}
-                >
-                  <img
-                    src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
-                    alt="QR Code"
-                    style={{ borderRadius: 8, maxWidth: "100%" }}
-                  />
-                  <Typography>{qr.name}</Typography>
-                </Card>
-              </Grid>
-            );
-          }) : null}
-        </Grid>
+        {qrCodes && qrCodes.length > 0 ? (
+          <Grid container spacing={2}>
+            {qrCodes.map((qr, i) => {
+              console.log(qr);
+              return (
+                <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
+                  <Card
+                    elevation={2}
+                    sx={{
+                      borderColor: theme.palette.divider,
+                      borderWidth: 1, 
+                      borderStyle: "solid",
+                      borderRadius: 2,
+                      p: 2,
+                      maxWidth: "fit-content",
+                      height: "100%",
+                      backgroundColor: theme.palette.background.paper,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      alignContent: "center",
+                      ":hover": {
+                        borderColor: theme.palette.primary.main,
+                        transform: "translateY(-2px)",
+                        elevation: 8,
+                        boxShadow: theme.shadows[8],
+                      },
+                    }}
+                    onClick={() => selectImage(qr)}
+                  >
+                    <img
+                      src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
+                      alt="QR Code"
+                      style={{
+                        borderRadius: 8,
+                        width: "100%",
+                        aspectRatio: "1/1",
+                        objectFit: "contain",
+                      }}
+                    />
+                    <Typography>{qr.name}</Typography>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        ) : (
+          <Box
+            sx={{
+              textAlign: "center",
+              py: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "60vh",
+            }}
+          >
+            <QrCodeIcon
+              sx={{
+                fontSize: 64,
+                mb: 2,
+                opacity: 0.3,
+                color: "text.secondary",
+              }}
+            />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No QR codes found
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Scan a QR code to get started
+            </Typography>
+          </Box>
+        )}
       </Box>
       <QrScannerPopup
         open={scannerOpen}
         onClose={closeScanner}
-        onImport={() => {refetchQrCodes(); console.log("RE FETCHING QR")}}
+        onImport={() => {
+          refetchQrCodes();
+          console.log("RE FETCHING QR");
+        }}
       />
 
       <QrShareDialog

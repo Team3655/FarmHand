@@ -1,11 +1,5 @@
 import { createTheme } from "@mui/material/styles";
-import {
-  anton,
-  impact,
-  antonio,
-  baskervville,
-  libreBaskervville,
-} from "../../utils/Fonts";
+import { anton, impact, baskervville } from "../../utils/Fonts";
 
 const TractorLightTheme = createTheme({
   palette: {
@@ -68,61 +62,51 @@ const TractorLightTheme = createTheme({
       fontFamily: '"Impact", "Anton"',
     },
     h4: {
-      fontFamily: '"Anton", "Antonio"',
+      fontFamily: '"Anton"',
     },
     h5: {
-      fontFamily: "Antonio",
+      fontFamily: "Anton",
       fontWeight: 500,
     },
     h6: {
-      fontFamily: "Antonio",
+      fontFamily: "Anton",
       fontWeight: 500,
     },
     button: {
-      fontFamily: "Antonio",
-      fontWeight: 500,
+      fontFamily: "Anton",
+      fontWeight: 300,
     },
     subtitle1: {
-      fontFamily: "Antonio",
-      fontWeight: 500,
+      fontFamily: "Anton",
+      fontWeight: 200,
     },
     subtitle2: {
-      fontFamily: "Antonio",
-      fontWeight: 400,
+      fontFamily: "Anton",
+      fontWeight: 100,
     },
     body1: {
-      fontFamily: '"Baskervville", "Libre Baskervville"',
+      fontFamily: '"Baskervville"',
       fontWeight: 300,
     },
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: `
-            @font-face {
-              font-family: 'Anton';
-              src: ${anton.src};
-            }
-    
-            @font-face {
-              font-family: 'Impact';
-              src: ${impact.src};
-            }
-            
-            @font-face {
-              font-family: 'Antonio';
-              src: ${antonio.src};
-            }
-            
-            @font-face {
-              font-family: 'Baskervville';
-              src: ${baskervville.src};
-            }
-    
-            @font-face {
-              font-family: 'Libre-Baskerville';
-              src: ${libreBaskervville.src};
-            }
-          `,
+        @font-face {
+          font-family: 'Anton';
+          src: ${anton.src};
+        }
+
+        @font-face {
+          font-family: 'Impact';
+          src: ${impact.src};
+        }
+        
+        @font-face {
+          font-family: 'Baskervville';
+          src: ${baskervville.src};
+        }
+      `,
     },
   },
 });
