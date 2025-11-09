@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
 import { useValidation } from "../../context/ValidationContext";
 import { useScoutData } from "../../context/ScoutDataContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import CounterInput from "./CounterInput";
 import DropdownInput from "./DropdownInput";
 import CheckboxInput from "./CheckboxInput";
@@ -26,6 +26,7 @@ export default function DynamicComponent(props: DynamicComponentProps) {
   const { addMatchData, addError, removeError, getMatchData } = useScoutData();
   const { component } = props;
 
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const [value, setValue] = useState<any>(null);
 
   const [storedValue, loading, error] = useAsyncFetch(
@@ -87,12 +88,19 @@ export default function DynamicComponent(props: DynamicComponentProps) {
       if (component.required) {
         removeError(component.name);
       }
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
     };
-  }, [storedValue, loading, error, component, setValid, addError, removeError]);
+  }, [storedValue, loading, error, component, setValid, addError, removeError, addMatchData]);
 
   const handleChange = (newValue: any) => {
     setValue(newValue);
     setTouched(true);
+
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
 
     const isInvalid = isFieldInvalid(
       component.required!,
@@ -108,7 +116,9 @@ export default function DynamicComponent(props: DynamicComponentProps) {
       removeError(component.name);
     }
 
-    addMatchData(component.id, newValue);
+    debounceTimeout.current = setTimeout(() => {
+      addMatchData(component.id, newValue);
+    }, 300);
   };
 
   const renderInput = () => {
