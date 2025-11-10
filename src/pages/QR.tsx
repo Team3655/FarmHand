@@ -1,7 +1,17 @@
-import { Box, Card, Fab, Grid, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Card,
+  Fab,
+  Grid,
+  Stack,
+  Typography,
+  useTheme,
+  Zoom,
+} from "@mui/material";
 import QrScanIcon from "@mui/icons-material/QrCodeScannerRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   exists,
   BaseDirectory,
@@ -13,6 +23,8 @@ import QrShareDialog from "../ui/dialog/QrShareDialogue";
 import useDialog from "../hooks/useDialog";
 import { useAsyncFetch } from "../hooks/useAsyncFetch";
 import { GetDescFromSvg } from "../utils/GeneralUtils";
+import useToggle from "../hooks/useToggle";
+import ExportIcon from "@mui/icons-material/IosShareRounded";
 
 const fetchQrCodes = async () => {
   const folderExists = await exists("saved-matches", {
@@ -48,13 +60,90 @@ const fetchQrCodes = async () => {
   return images;
 };
 
+const fabStyle = {
+  position: "fixed",
+  bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+  right: "calc(16px + env(safe-area-inset-right, 0px))",
+};
+
 export default function QRPage() {
   const theme = useTheme();
   const [qrCodes, loadingQr, errorFetchingQr, refetchQrCodes] =
     useAsyncFetch(fetchQrCodes);
   const [activeCode, setActiveCode] = useState<QrCode | null>(null);
+  const [selecting, toggleSelecting] = useToggle(false);
+  const [validQrCodes, setValidQrCodes] = useState<QrCode[]>([]);
+  const [selectedHash, setSelectedHash] = useState<string | null>(null);
+  const [invalidQrCodes, setInvalidQrCodes] = useState<QrCode[]>([]);
   const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
   const [scannerOpen, openScanner, closeScanner] = useDialog();
+  const [selectedCodes, setSelectedCodes] = useState<QrCode[]>([]);
+
+  const codeIsSelected = (code: QrCode) => {
+    return selectedCodes.includes(code);
+  };
+
+  useEffect(() => {
+    if (!qrCodes) return;
+
+    if (!selecting || !selectedHash) {
+      // If not selecting, or no hash is set, all codes are "valid" for display purposes
+      setValidQrCodes(qrCodes);
+      setInvalidQrCodes([]);
+    } else {
+      const valid: QrCode[] = [];
+      const invalid: QrCode[] = [];
+      qrCodes.forEach((code) => {
+        const [, , schemaHash] = code.data.split(":");
+        if (schemaHash === selectedHash) {
+          valid.push(code);
+        } else {
+          invalid.push(code);
+        }
+      });
+      setValidQrCodes(valid);
+      setInvalidQrCodes(invalid);
+    }
+  }, [selecting, selectedHash, qrCodes]);
+
+  const toggleSelectMode = () => {
+    // When turning off select mode, reset selections
+    if (selecting) {
+      setSelectedCodes([]);
+      setSelectedHash(null);
+    }
+    toggleSelecting();
+  };
+
+  const noCodesSelected = useMemo(() => {
+    return selectedCodes.length === 0;
+  }, [selectedCodes]);
+
+  const updateSelectedCodes = (code: QrCode) => {
+    const newSelectedCodes = codeIsSelected(code)
+      ? selectedCodes.filter((c) => c !== code)
+      : [...selectedCodes, code];
+
+    setSelectedCodes(newSelectedCodes);
+
+    // If we just selected the first code, set the hash
+    if (newSelectedCodes.length === 1) {
+      const [, , schemaHash] = newSelectedCodes[0].data.split(":");
+      setSelectedHash(schemaHash);
+    }
+    // If we just deselected the last code, clear the hash
+    else if (newSelectedCodes.length === 0) {
+      setSelectedHash(null);
+    }
+  };
+
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    console.log(
+      "Exporting selected codes:",
+      selectedCodes.map((c) => c.data)
+    );
+  };
 
   const selectImage = (image: QrCode) => {
     setActiveCode(image);
@@ -79,66 +168,165 @@ export default function QRPage() {
 
   return (
     <>
-      <Fab
-        color="primary"
-        size="large"
-        variant="extended"
-        sx={{
-          position: "fixed",
-          bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-          right: "calc(16px + env(safe-area-inset-right, 0px))",
-        }}
-        onClick={openScanner}
-      >
-        <QrScanIcon sx={{ mr: 1 }} />
-        Scan
-      </Fab>
+      <Zoom in={!selecting} unmountOnExit>
+        <Fab
+          color="primary"
+          size="large"
+          variant="extended"
+          sx={fabStyle}
+          onClick={openScanner}
+        >
+          <QrScanIcon sx={{ mr: 1 }} />
+          Scan
+        </Fab>
+      </Zoom>
+      <Zoom in={selecting} unmountOnExit>
+        <Fab
+          color="primary"
+          size="large"
+          variant="extended"
+          disabled={noCodesSelected}
+          sx={fabStyle}
+          onClick={handleExport}
+        >
+          <ExportIcon sx={{ mr: 1 }} />
+          Export
+        </Fab>
+      </Zoom>
       <Box sx={{ px: 3, pt: 2, justifyContent: "center" }}>
         {qrCodes && qrCodes.length > 0 ? (
-          <Grid container spacing={2}>
-            {qrCodes.map((qr, i) => {
-              console.log(qr);
-              return (
-                <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
-                  <Card
-                    elevation={2}
-                    sx={{
-                      borderColor: theme.palette.divider,
-                      borderWidth: 1,
-                      borderStyle: "solid",
-                      borderRadius: 2,
-                      p: 2,
-                      maxWidth: "fit-content",
-                      height: "100%",
-                      backgroundColor: theme.palette.background.paper,
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      alignContent: "center",
-                      ":hover": {
-                        borderColor: theme.palette.primary.main,
-                        transform: "translateY(-2px)",
-                        elevation: 8,
-                        boxShadow: theme.shadows[8],
-                      },
-                    }}
-                    onClick={() => selectImage(qr)}
+          <>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Stack direction="row" spacing={2}>
+                <Button variant="contained" color="secondary">
+                  Filter
+                </Button>
+                <Button variant="contained" color="secondary">
+                  Sort
+                </Button>
+              </Stack>
+              <Stack>
+                <Button
+                  variant={selecting ? "outlined" : "contained"}
+                  color="secondary"
+                  onClick={toggleSelectMode}
+                  sx={{
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {selecting ? "Cancel" : "Select"}
+                </Button>
+              </Stack>
+            </Box>
+
+            {/*Saved qr codes */}
+            <>
+              <Grid container spacing={2}>
+                {validQrCodes.map((qr, i) => {
+                  return (
+                    <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
+                      <Card
+                        elevation={2}
+                        sx={{
+                          borderColor: codeIsSelected(qr)
+                            ? theme.palette.info.main
+                            : "transparent",
+                          borderWidth: codeIsSelected(qr) ? 2 : 1,
+                          borderStyle: "solid",
+                          borderRadius: 2,
+                          p: 2,
+                          maxWidth: "fit-content",
+                          height: "100%",
+                          backgroundColor: theme.palette.background.paper,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                          alignContent: "center",
+                          ":hover": {
+                            borderColor: theme.palette.primary.main,
+                            transform: "translateY(-2px)",
+                            elevation: 8,
+                            boxShadow: theme.shadows[8],
+                          },
+                        }}
+                        onClick={() => {
+                          if (selecting) {
+                            updateSelectedCodes(qr);
+                          } else {
+                            selectImage(qr);
+                          }
+                        }}
+                      >
+                        <img
+                          src={`data:image/svg+xml,${encodeURIComponent(
+                            qr.image
+                          )}`}
+                          alt="QR Code"
+                          style={{
+                            borderRadius: 8,
+                            width: "100%",
+                            aspectRatio: "1/1",
+                            objectFit: "contain",
+                          }}
+                        />
+                        <Typography>{qr.name}</Typography>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+              {selecting && invalidQrCodes.length > 0 && (
+                <>
+                  <Typography
+                    variant="h6"
+                    sx={{ mt: 4, mb: 2, color: "text.secondary" }}
                   >
-                    <img
-                      src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
-                      alt="QR Code"
-                      style={{
-                        borderRadius: 8,
-                        width: "100%",
-                        aspectRatio: "1/1",
-                        objectFit: "contain",
-                      }}
-                    />
-                    <Typography>{qr.name}</Typography>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
+                    Incompatible Codes
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {invalidQrCodes.map((qr, i) => (
+                      <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
+                        <Card
+                          elevation={1}
+                          sx={{
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 2,
+                            p: 2,
+                            maxWidth: "fit-content",
+                            height: "100%",
+                            backgroundColor: theme.palette.background.paper,
+                            alignContent: "center",
+                            opacity: 0.5,
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          <img
+                            src={`data:image/svg+xml,${encodeURIComponent(
+                              qr.image
+                            )}`}
+                            alt="QR Code"
+                            style={{
+                              borderRadius: 8,
+                              width: "100%",
+                              aspectRatio: "1/1",
+                              objectFit: "contain",
+                            }}
+                          />
+                          <Typography>{qr.name}</Typography>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </>
+              )}
+            </>
+          </>
         ) : (
           <Box
             sx={{
@@ -163,7 +351,7 @@ export default function QRPage() {
               No QR codes found
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Scan a QR code to get started
+              Scan a QR code or scout a match to get started
             </Typography>
           </Box>
         )}
