@@ -39,7 +39,6 @@ function InputCard(props: InputCardProps) {
         borderStyle: "solid",
         borderRadius: 2,
         p: 2,
-        minWidth: "fit-content",
         height: "100%",
         backgroundColor: theme.palette.background.paper,
         transition: "border-color 0.2s ease, background-color 0.2s ease",

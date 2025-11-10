@@ -38,50 +38,48 @@ export default function Section(props: SectionProps) {
   const showErrorHighlight = hasErrorInSection && !active && submitted;
 
   return (
-    <>
-      <Accordion
-        expanded={active}
-        square
-        disableGutters
-        onChange={toggleActive}
-        elevation={active ? 2 : 1}
-        sx={{
-          p: 3,
-          minWidth: "fit-content",
-          height: "100%",
-          display: "flex",
-          alignContent: "center",
-          flexDirection: "column",
-          backgroundColor: theme.palette.background.paper,  
-          borderRadius: 2,
-          borderColor: showErrorHighlight
-            ? theme.palette.error.main
-            : "transparent",
-          borderWidth: showErrorHighlight ? 2 : 0,
-          borderStyle: "solid",
-          transition: "all 0.2s ease",
-          "&:before": {
-            display: "none",
-          },
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandIcon />} sx={{ p: 0 }}>
-          <Typography variant="h5" sx={{ my: 2, mx: 1 }}>
-            {section.title}
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Grid container spacing={2}>
-            {section.fields.map((component, index) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
-                <ValidationProvider>
-                  <DynamicComponent component={component} />
-                </ValidationProvider>
-              </Grid>
-            ))}
-          </Grid>
-        </AccordionDetails>
-      </Accordion>
-    </>
+    <Accordion
+      expanded={active}
+      disableGutters
+      onChange={toggleActive}
+      elevation={active ? 2 : 1}
+      sx={{
+        py: 3,
+        px: 1,
+        height: "100%",
+        width: "100%",
+        display: "flex",
+        alignContent: "center",
+        flexDirection: "column",
+        backgroundColor: theme.palette.background.paper,
+        borderRadius: 2,
+        borderColor: showErrorHighlight
+          ? theme.palette.error.main
+          : "transparent",
+        borderWidth: showErrorHighlight ? 2 : 0,
+        borderStyle: "solid",
+        transition: "all 0.2s ease",
+        "&:before": {
+          display: "none",
+        },
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandIcon />}>
+        <Typography variant="h5" sx={{ my: 2 }}>
+          {section.title}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Grid container spacing={2}>
+          {section.fields.map((component, index) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
+              <ValidationProvider>
+                <DynamicComponent component={component} />
+              </ValidationProvider>
+            </Grid>
+          ))}
+        </Grid>
+      </AccordionDetails>
+    </Accordion>
   );
 }

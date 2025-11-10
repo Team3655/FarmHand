@@ -8,7 +8,6 @@ import {
 import { useValidation } from "../../context/ValidationContext";
 import { useScoutData } from "../../context/ScoutDataContext";
 
-
 /**
  * Props for the dropdown input
  */
@@ -34,12 +33,8 @@ export default function DropdownInput(props: DropdownInputProps) {
   };
 
   return (
-    <FormControl>
-      <InputLabel
-        color={showError ? "error" : "secondary"}
-      >
-        {label}
-      </InputLabel>
+    <FormControl fullWidth>
+      <InputLabel color={showError ? "error" : "secondary"}>{label}</InputLabel>
       <Select
         value={value}
         label={label}
@@ -53,7 +48,9 @@ export default function DropdownInput(props: DropdownInputProps) {
         }}
       >
         {options.map((option) => (
-          <MenuItem value={option} key={option}>{option}</MenuItem>
+          <MenuItem value={option} key={option}>
+            {option}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>

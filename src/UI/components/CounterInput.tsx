@@ -1,4 +1,4 @@
-import { Button, Stack, Typography} from "@mui/material";
+import { Button, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/AddRounded";
 import RemoveIcon from "@mui/icons-material/RemoveRounded";
 
@@ -48,8 +48,6 @@ export default function CounterInput(props: CounterInputProps) {
         color="secondary"
         disabled={isMin}
         sx={{
-          minWidth: 56,
-          minHeight: 56,
           aspectRatio: "1/1",
           borderRadius: 2,
         }}
@@ -58,7 +56,7 @@ export default function CounterInput(props: CounterInputProps) {
       </Button>
       <Typography
         variant="h5"
-        sx={{ minWidth: 60, textAlign: "center", color: "text.primary" }}
+        sx={{ textAlign: "center", color: "text.primary" }}
       >
         {value}
       </Typography>
@@ -68,8 +66,6 @@ export default function CounterInput(props: CounterInputProps) {
         color="secondary"
         disabled={isMax}
         sx={{
-          minWidth: 56,
-          minHeight: 56,
           aspectRatio: "1/1",
           borderRadius: 2,
         }}

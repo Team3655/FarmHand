@@ -33,7 +33,6 @@ export default function CheckboxInput(props: CheckboxInputProps) {
         justifyContent: "center",
         width: "100%",
         maxWidth: 200,
-        minWidth: 120,
         aspectRatio: "2 / 1",
         fontSize: "1.5rem",
       }}
