@@ -193,14 +193,14 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth={isLandscape ? "md" : "xs"}
+      maxWidth={isLandscape ? "md" : "sm"}
       slotProps={{
         paper: {
           elevation: 24,
           sx: {
             display: "flex",
             flexDirection: isLandscape ? "row" : "column",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             alignItems: "stretch",
             backgroundColor: theme.palette.background.default,
             borderRadius: 3,
@@ -218,8 +218,9 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
       {/* Camera Section */}
       <Box
         sx={{
-          flex: isLandscape ? 1 : "none",
+          flex: isLandscape ? 1 : "0 0 auto",
           p: 2,
+          width: isLandscape ? "auto" : "100%",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -230,7 +231,11 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
           <Skeleton
             variant="rounded"
             width="100%"
-            sx={{ borderRadius: 3, aspectRatio: "1/1" }}
+            sx={{
+              borderRadius: 3,
+              aspectRatio: "1/1",
+              maxHeight: isLandscape ? "none" : "50vh",
+            }}
           />
         ) : (
           <>
@@ -240,8 +245,9 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
                 borderRadius: 3,
                 overflow: "hidden",
                 backgroundColor: "background.default",
-                aspectRatio: isLandscape ? "4/3" : "1/1",
+                aspectRatio: "1/1",
                 width: "100%",
+                maxHeight: isLandscape ? "none" : "50vh",
               }}
             >
               <video
@@ -255,6 +261,7 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
                 muted
                 playsInline
               />
+
               {/* Corner Frame */}
               <Box
                 sx={{
@@ -299,49 +306,59 @@ export default function QrScannerPopup(props: QrScannerPopupProps) {
       {/* Scanned Results Section */}
       <Box
         sx={{
-          flex: isLandscape ? 1 : "none",
+          flex: isLandscape ? 1 : "1 1 auto",
           p: 2,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
+          minHeight: isLandscape ? "auto" : 200,
+          overflow: "hidden",
         }}
       >
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Scanned Codes ({results.length})
-          </Typography>
-          <List
-            dense
-            sx={{ maxHeight: isLandscape ? "55dvh" : "35vh", overflow: "auto" }}
-          >
-            {results.map((code, i) => (
-              <ListItem
-                key={i}
-                sx={{ bgcolor: "action.hover", borderRadius: 2, mb: 1 }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <QrCodeIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={code}
-                  slotProps={{
-                    primary: {
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                    },
-                  }}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
+        <Typography variant="h6" sx={{ mb: 1, flexShrink: 0 }}>
+          Scanned Codes ({results.length})
+        </Typography>
+
+        <List
+          dense
+          sx={{
+            flexGrow: 1,
+            overflow: "auto",
+            mb: 2,
+            maxHeight: isLandscape ? "none" : 250,
+          }}
+        >
+          {results.map((code, i) => (
+            <ListItem
+              key={i}
+              sx={{
+                bgcolor: "action.hover",
+                borderRadius: 2,
+                mb: 1,
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <QrCodeIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={code}
+                slotProps={{
+                  primary: {
+                    textOverflow: "ellipsis",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                  },
+                }}
+              />
+            </ListItem>
+          ))}
+        </List>
 
         <Button
           variant="contained"
           fullWidth
-          sx={{ mt: 2 }}
+          sx={{ flexShrink: 0 }}
           onClick={importQRList}
+          disabled={results.length === 0}
         >
           Import All
         </Button>
