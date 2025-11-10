@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "start": "npm run tauri dev",
     "start-ios": "npm run tauri ios dev",
-    "start-android": "npm run tauri android dev"
+    "start-android": "npm run tauri android dev",
+    "reset-ios": "xcrun simctl shutdown all && xcrun simctl erase all"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
