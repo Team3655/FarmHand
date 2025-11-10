@@ -1,7 +1,5 @@
 import { TextField } from "@mui/material";
 import { ChangeEvent } from "react";
-import { useValidation } from "../../context/ValidationContext";
-import { useScoutData } from "../../context/ScoutDataContext";
 
 /**
  * Props for the text input component
@@ -11,6 +9,7 @@ interface TextInputProps {
   multiline?: boolean;
   value?: string;
   onChange?: (value: string) => void;
+  error?: boolean;
 }
 
 /**
@@ -20,11 +19,7 @@ interface TextInputProps {
  * @returns A multiline text input
  */
 export default function TextInput(props: TextInputProps) {
-  const { label, multiline, value, onChange } = props;
-
-  const { valid, touched } = useValidation();
-  const { submitted } = useScoutData();
-  const showError = !valid && (touched || submitted);
+  const { label, multiline, value, onChange, error } = props;
 
   const updateText = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -40,7 +35,7 @@ export default function TextInput(props: TextInputProps) {
       label={label}
       onChange={updateText}
       value={value}
-      error={showError}
+      error={error}
       maxRows={5}
       slotProps={{ htmlInput: { maxLength: 75 } }}
       sx={{

@@ -6,15 +6,14 @@ import CounterInput from "./CounterInput";
 import DropdownInput from "./DropdownInput";
 import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
-import InputCard from "../InputCard";
 import { isFieldInvalid } from "../../utils/GeneralUtils";
 import { useAsyncFetch } from "../../hooks/useAsyncFetch";
 
-/**
- * Props for the dynamic component
+/* Props for the dynamic component
  */
 interface DynamicComponentProps {
   component: Component;
+  submitted: boolean;
 }
 
 /**
@@ -23,9 +22,8 @@ interface DynamicComponentProps {
  */
 export default function DynamicComponent(props: DynamicComponentProps) {
   const { valid, touched, setValid, setTouched } = useValidation();
-  const { addMatchData, addError, removeError, getMatchData, submitted } =
-    useScoutData();
-  const { component } = props;
+  const { addMatchData, addError, removeError, getMatchData } = useScoutData();
+  const { component, submitted } = props;
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const [value, setValue] = useState<any>(null);
@@ -94,7 +92,17 @@ export default function DynamicComponent(props: DynamicComponentProps) {
         clearTimeout(debounceTimeout.current);
       }
     };
-  }, [storedValue, loading, error, component, setValid, addError, removeError, addMatchData]);
+  }, [
+    storedValue,
+    loading,
+    error,
+    component,
+    setValid,
+    addError,
+    removeError,
+    addMatchData,
+    submitted,
+  ]);
 
   const handleChange = (newValue: any) => {
     setValue(newValue);
@@ -171,6 +179,7 @@ export default function DynamicComponent(props: DynamicComponentProps) {
             onChange={handleChange}
             multiline={component.props?.multiline}
             label={component.props?.label}
+            error={showError}
           />
         );
 
@@ -179,9 +188,5 @@ export default function DynamicComponent(props: DynamicComponentProps) {
     }
   };
 
-  return (
-    <InputCard label={component.name} required={component.required ?? false}>
-      {renderInput()}
-    </InputCard>
-  );
+  return renderInput();
 }

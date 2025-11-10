@@ -12,19 +12,21 @@ import ExpandIcon from "@mui/icons-material/ExpandMoreRounded";
 import { useScoutData } from "../context/ScoutDataContext";
 import useToggle from "../hooks/useToggle";
 import { useMemo } from "react";
+import InputCard from "./InputCard";
 
 /**
  * Props for the section component
  */
 interface SectionProps {
   section: SectionData;
+  submitted: boolean;
 }
 
 export default function Section(props: SectionProps) {
-  const { section } = props;
+  const { section, submitted } = props;
   const theme = useTheme();
   const [active, toggleActive] = useToggle(true);
-  const { errors, submitted } = useScoutData();
+  const { errors } = useScoutData();
 
   const getSectionFields = section.fields.map((field) => field.name);
 
@@ -32,7 +34,7 @@ export default function Section(props: SectionProps) {
 
   const hasErrorInSection = useMemo(
     () => sectionFields.some((field) => errors.includes(field)),
-    [section.fields, errors]
+    [section.fields, errors, submitted]
   );
 
   const showErrorHighlight = hasErrorInSection && !active && submitted;
@@ -73,8 +75,17 @@ export default function Section(props: SectionProps) {
         <Grid container spacing={2}>
           {section.fields.map((component, index) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
-              <ValidationProvider>
-                <DynamicComponent component={component} />
+              <ValidationProvider key={component.id}>
+                <InputCard
+                  label={component.name}
+                  required={component.required ?? false}
+                  submitted={submitted}
+                >
+                  <DynamicComponent
+                    component={component}
+                    submitted={submitted}
+                  />
+                </InputCard>
               </ValidationProvider>
             </Grid>
           ))}

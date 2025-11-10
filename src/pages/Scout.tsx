@@ -29,7 +29,7 @@ import { getFieldValueByName } from "../utils/GeneralUtils";
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
   const theme = useTheme();
-  const { errors, clearMatchData, setSubmitted, clearErrors, getMatchDataMap } =
+  const { errors, clearMatchData, setSubmitted, submitted, clearErrors, getMatchDataMap } =
     useScoutData();
 
   const [resetKey, setResetKey] = useState<Key>(0);
@@ -99,7 +99,7 @@ export default function Scout() {
         </Typography>
         <Stack spacing={3} key={resetKey}>
           {schemaData!.sections.map((section, index) => (
-            <Section key={index} section={section} />
+            <Section key={index} section={section} submitted={submitted} />
           ))}
         </Stack>
         <Stack

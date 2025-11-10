@@ -64,7 +64,7 @@ export default function ScoutDataProvider(props: ScoutDataProviderProps) {
 
   const getMatchDataMap = useCallback(() => matchData.current, []);
 
-  const clearMatchData = async () => {
+  const clearMatchData = useCallback(async () => {
     const storeToDelete = Array.from(matchData.current.keys());
 
     matchData.current.clear();
@@ -75,7 +75,7 @@ export default function ScoutDataProvider(props: ScoutDataProviderProps) {
         StoreManager.remove(StoreKeys.match.field(key.toString()))
       )
     );
-  };
+  }, []);
 
   const addError = useCallback((error: string) => {
     setErrors((prev) => [...prev, error]);
@@ -85,9 +85,9 @@ export default function ScoutDataProvider(props: ScoutDataProviderProps) {
     setErrors((prevErrors) => prevErrors.filter((e) => e !== error));
   }, []);
 
-  const clearErrors = () => {
+  const clearErrors = useCallback(() => {
     setErrors([]);
-  };
+  }, []);
 
   return (
     <ScoutDataContext.Provider

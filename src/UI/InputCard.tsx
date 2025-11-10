@@ -2,7 +2,6 @@ import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { ReactNode, memo } from "react";
 import { useValidation } from "../context/ValidationContext";
-import { useScoutData } from "../context/ScoutDataContext";
 
 /**
  * Props for InputCard
@@ -10,8 +9,8 @@ import { useScoutData } from "../context/ScoutDataContext";
 interface InputCardProps {
   label: string;
   required: boolean;
-  errorMessage?: string;
   children: ReactNode;
+  submitted: boolean;
 }
 
 /**
@@ -20,9 +19,8 @@ interface InputCardProps {
  * @returns A Card wrapper for all the input components
  */
 function InputCard(props: InputCardProps) {
-  const { label, required, errorMessage, children } = props;
+  const { label, required, children, submitted } = props;
   const { valid, touched } = useValidation();
-  const { submitted } = useScoutData();
   const theme = useTheme();
 
   const showError = required && !valid && (touched || submitted);
@@ -58,7 +56,7 @@ function InputCard(props: InputCardProps) {
       >
         {showError && (
           <Typography variant="subtitle1" sx={{ mb: 1 }} color="error">
-            {errorMessage ?? "This field is required"}
+            "This field is required"
           </Typography>
         )}
         <Typography variant="h6" sx={{ mb: 1 }}>
