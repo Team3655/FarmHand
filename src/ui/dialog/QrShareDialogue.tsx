@@ -21,6 +21,7 @@ import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import { decodeQR, deleteQrCode } from "../../utils/QrUtils";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import useDialog from "../../hooks/useDialog";
+import { saveFileWithDialog } from "../../utils/GeneralUtils";
 
 /**
  * Props for the QR export dialog
@@ -36,7 +37,8 @@ interface QrExportDialogProps {
 }
 
 export default function QrShareDialog(props: QrExportDialogProps) {
-  const { open, onClose, qrCodeData, handleSaveQR, forQrPage, onDelete } = props;
+  const { open, onClose, qrCodeData, handleSaveQR, forQrPage, onDelete } =
+    props;
   const theme = useTheme();
   const [deletePopupOpen, openDeletePopup, closeDeletePopup] = useDialog();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -47,6 +49,10 @@ export default function QrShareDialog(props: QrExportDialogProps) {
     const decoded = await decodeQR(qrCodeData.data);
     console.log(decoded);
     await writeText(JSON.stringify(decoded, null, 2));
+  };
+
+  const handleDownload = async () => {
+    await saveFileWithDialog(qrCodeData.image, qrCodeData.name);
   };
 
   const handleDelete = async () => {
@@ -132,7 +138,11 @@ export default function QrShareDialog(props: QrExportDialogProps) {
               <Button variant="contained" color="primary" onClick={handleCopy}>
                 <CopyIcon sx={{ mr: 1 }} /> Copy
               </Button>
-              <Button variant="contained" color="primary">
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleDownload}
+              >
                 <DownloadIcon sx={{ mr: 1 }} /> Download
               </Button>
             </Stack>
