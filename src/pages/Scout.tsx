@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  ListItem,
   Stack,
   Typography,
   useTheme,
@@ -29,8 +28,14 @@ import { getFieldValueByName } from "../utils/GeneralUtils";
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
   const theme = useTheme();
-  const { errors, clearMatchData, setSubmitted, submitted, clearErrors, getMatchDataMap } =
-    useScoutData();
+  const {
+    errors,
+    clearMatchData,
+    setSubmitted,
+    submitted,
+    clearErrors,
+    getMatchDataMap,
+  } = useScoutData();
 
   const [resetKey, setResetKey] = useState<Key>(0);
   const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
@@ -162,32 +167,70 @@ export default function Scout() {
       <Dialog
         open={showErrorPopup}
         onClose={closeErrorPopup}
-        sx={{ elevation: 24 }}
+        sx={{
+          elevation: 24,
+          "& .MuiDialog-paper": {
+            backgroundColor: theme.palette.background.paper,
+            backgroundImage: "none",
+          },
+        }}
       >
         <DialogTitle
           sx={{
             display: "flex",
             alignItems: "center",
             color: theme.palette.error.main,
+            backgroundColor: theme.palette.background.paper,
           }}
         >
           <ErrorOutlineIcon sx={{ mr: 1 }} />
           Errors
         </DialogTitle>
-        <DialogContent dividers>
-          <DialogContentText variant="body1" sx={{ mt: 2, mb: 1 }}>
+        <DialogContent
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+            borderColor: theme.palette.divider,
+          }}
+        >
+          <DialogContentText
+            variant="body1"
+            sx={{
+              mb: 2,
+              color: theme.palette.text.secondary,
+            }}
+          >
             The following fields have errors that must be addressed before
             submission:
           </DialogContentText>
-          {errors.map((error, index) => (
-            <ListItem key={index}>
-              <Typography sx={{ color: theme.palette.error.main }}>
-                {error}
-              </Typography>
-            </ListItem>
-          ))}
+          <Stack spacing={1.5}>
+            {errors.map((error, index) => (
+              <Box
+                key={index}
+                sx={{
+                  p: 2,
+                  border: `1px solid ${theme.palette.error.main}`,
+                  borderRadius: 1,
+                  backgroundColor: theme.palette.background.paper,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: theme.palette.error.main,
+                    fontWeight: 500,
+                  }}
+                  variant="subtitle2"
+                >
+                  {error}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
           <Button onClick={closeErrorPopup} color="inherit">
             OK
           </Button>
