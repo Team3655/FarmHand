@@ -3,6 +3,7 @@ import { decodeQR, reconstructMatchDataFromArray } from "./QrUtils";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { getSchemaFromHash } from "./SchemaUtils";
+import changelog from "../../CHANGELOG.md?raw";
 
 export function isFieldInvalid(
   required: boolean,
@@ -259,4 +260,30 @@ export async function exportQrCodesToJson(
   await saveFileWithDialog(fileContent, filename);
 
   return filename;
+}
+
+export async function readChangelog(): Promise<string> {
+  try {
+    // Parse the changelog (improved version)
+    const lines = changelog.split("\n");
+    let latestEntry = "";
+    let foundEntry = false;
+    let entryStartFound = false;
+
+    for (const line of lines) {
+      if (line.startsWith("## ")) {
+        if (foundEntry) break; // Stop after the first entry
+        foundEntry = true;
+        entryStartFound = true;
+        latestEntry += line + "\n";
+      } else if (entryStartFound) {
+        latestEntry += line + "\n";
+      }
+    }
+
+    return latestEntry.trim();
+  } catch (e) {
+    console.error("Failed to read changelog:", e);
+    return "Error reading changelog.";
+  }
 }

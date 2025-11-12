@@ -1,5 +1,7 @@
 declare module "*.ttf";
 
+declare module "*.md";
+
 /**
  * Holds data about a specific schema and all of its components
  */
@@ -48,5 +50,5 @@ interface SchemaMetaData {
   name: string;
   path: string;
   schema: Schema;
-  type: "default" | "generated"
+  type: "default" | "generated";
 }
