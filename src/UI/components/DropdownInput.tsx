@@ -15,6 +15,7 @@ interface DropdownInputProps {
   value?: string;
   onChange?: (value: string) => void;
   error?: boolean;
+  disabled?: boolean;
 }
 
 /**
@@ -22,7 +23,7 @@ interface DropdownInputProps {
  * @returns Dropdown input for the page
  */
 export default function DropdownInput(props: DropdownInputProps) {
-  const { label, options, onChange, value, error } = props;
+  const { label, options, onChange, value, error, disabled } = props;
 
   const handleChange = (e: SelectChangeEvent) => {
     if (onChange) onChange(e.target.value);
@@ -35,6 +36,7 @@ export default function DropdownInput(props: DropdownInputProps) {
         value={value}
         label={label}
         onChange={handleChange}
+        disabled={disabled}
         color="secondary"
         error={error}
         sx={{

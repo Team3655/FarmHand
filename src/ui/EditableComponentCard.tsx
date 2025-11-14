@@ -46,6 +46,9 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   const [dropdownError, setDropdownError] = useState<string | null>(null);
   const theme = useTheme();
 
+  const isProtected =
+    component.name === "Match Number" || component.name === "Team Number";
+
   // Ref to track the ID of the component whose dropdownInputValue was last synced from props.
   const lastSyncedDropdownComponentId = useRef(component.id);
 
@@ -317,6 +320,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                       : theme.palette.primary.main,
                   },
                 }}
+                disabled={isProtected}
               >
                 <EditIcon />
               </IconButton>
@@ -332,6 +336,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                     color: theme.palette.error.main,
                   },
                 }}
+                disabled={isProtected}
               >
                 <DeleteIcon />
               </IconButton>
@@ -351,6 +356,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                 editedComponent.type.charAt(0).toUpperCase() +
                 editedComponent.type.slice(1)
               }
+              disabled={isProtected}
               onChange={(value) =>
                 handleFieldChange("type", value.toLowerCase())
               }
@@ -360,6 +366,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
               control={
                 <Switch
                   checked={editedComponent.required || false}
+                  disabled={isProtected}
                   onChange={(e) =>
                     handleFieldChange("required", e.target.checked)
                   }

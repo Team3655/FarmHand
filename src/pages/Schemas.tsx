@@ -107,7 +107,7 @@ export default function SchemaEditor() {
       const maxId = Math.max(0, ...allIds);
       setNextFieldId(maxId + 1);
     }
-  }, [editingSchema?.name]);
+  }, [editingSchema]);
 
   // Check for unsaved changes whenever editingSchema changes
   useEffect(() => {
@@ -217,7 +217,30 @@ export default function SchemaEditor() {
       return;
     }
 
-    await saveSchema({ name: trimmedName, sections: [] } as Schema);
+    await saveSchema({
+      name: trimmedName,
+      sections: [
+        {
+          title: "Match Info",
+          fields: [
+            {
+              id: 1,
+              name: "Match Number",
+              type: "text",
+              required: true,
+              props: {},
+            },
+            {
+              id: 2,
+              name: "Team Number",
+              type: "text",
+              required: true,
+              props: {},
+            },
+          ],
+        },
+      ],
+    } as Schema);
     closeNewSchemaDialog();
     await refreshSchemas();
   };
@@ -694,6 +717,12 @@ export default function SchemaEditor() {
             {filteredSchema?.sections?.length ? (
               filteredSchema.sections.map((section: SectionData, i: number) => {
                 const originalIndex = getOriginalSectionIndex(i);
+                const isProtectedSection = section.fields.some(
+                  (field: Component) =>
+                    field.name === "Match Number" ||
+                    field.name === "Team Number"
+                );
+
                 return (
                   <Card
                     key={originalIndex}
@@ -740,6 +769,7 @@ export default function SchemaEditor() {
                                 setSectionToDeleteIndex(originalIndex);
                                 openDeleteSectionDialog();
                               }}
+                              disabled={isProtectedSection}
                               sx={{
                                 "&:hover": {
                                   backgroundColor: `${theme.palette.error.main}20`,
