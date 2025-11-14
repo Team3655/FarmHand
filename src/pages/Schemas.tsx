@@ -6,11 +6,6 @@ import {
   Stack,
   TextField,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
   useTheme,
   Card,
   CardContent,
@@ -34,7 +29,14 @@ import { useSchema } from "../context/SchemaContext";
 import { deleteSchema, saveSchema } from "../utils/SchemaUtils";
 import EditableComponentCard from "../ui/EditableComponentCard";
 import PageHeader from "../ui/PageHeader";
+import CreateSchemaDialog from "../ui/dialog/CreateSchemaDialog";
 import AddSectionDialog from "../ui/dialog/AddSectionDialog";
+import RenameSectionDialog from "../ui/dialog/RenameSectionDialog";
+import RenameSchemaDialog from "../ui/dialog/RenameSchemaDialog";
+import DeleteSchemaDialog from "../ui/dialog/DeleteSchemaDialog";
+import DeleteSectionDialog from "../ui/dialog/DeleteSectionDialog";
+import DuplicateNameDialog from "../ui/dialog/DuplicateNameDialog";
+import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
 
 export default function SchemaEditor() {
   const theme = useTheme();
@@ -77,7 +79,6 @@ export default function SchemaEditor() {
   >(null);
   const [newSchemaDialogOpen, openNewSchemaDialog, closeNewSchemaDialog] =
     useDialog();
-  const [newSchemaName, setNewSchemaName] = useState("");
   const [schemaToRename, setSchemaToRename] = useState<SchemaMetaData | null>(
     null
   );
@@ -90,8 +91,6 @@ export default function SchemaEditor() {
   const [duplicateNameError, setDuplicateNameError] = useState("");
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [newSchemaName, setNewSchemaName] = useState("");
   const [nextFieldId, setNextFieldId] = useState(1);
 
   const isEditable =
@@ -208,7 +207,7 @@ export default function SchemaEditor() {
     );
   };
 
-  const handleCreateSchema = async () => {
+  const handleCreateSchema = async (newSchemaName: string) => {
     const trimmedName = newSchemaName.trim();
     if (!trimmedName) return;
 
@@ -221,10 +220,9 @@ export default function SchemaEditor() {
     await saveSchema({ name: trimmedName, sections: [] } as Schema);
     closeNewSchemaDialog();
     await refreshSchemas();
-    setNewSchemaName("");
   };
 
-  const handleRenameSchema = async () => {
+  const handleRenameSchema = async (newSchemaName: string) => {
     const trimmedName = newSchemaName.trim();
     if (!schemaToRename || !trimmedName) {
       closeSchemaRenameDialog();
@@ -247,7 +245,6 @@ export default function SchemaEditor() {
 
     await refreshSchemas();
     closeSchemaRenameDialog();
-    setNewSchemaName("");
   };
 
   const handleDeleteSchema = async () => {
@@ -274,18 +271,19 @@ export default function SchemaEditor() {
     setSnackbarOpen(true);
   };
 
-  const handleAddSection = (sectionName: string) => {
+  const handleAddSection = (newSectionName: string) => {
     if (!editingSchema) return;
-
-    if (checkSectionNameExists(sectionName)) {
-      setDuplicateNameError(`Section "${sectionName}" already exists`);
+    if (checkSectionNameExists(newSectionName)) {
+      setDuplicateNameError(`Section "${newSectionName}" already exists`);
       openDuplicateNameDialog();
       return;
     }
-
     setEditingSchema({
       ...editingSchema,
-      sections: [...editingSchema.sections, { title: sectionName, fields: [] }],
+      sections: [
+        ...editingSchema.sections,
+        { title: newSectionName, fields: [] },
+      ],
     });
     closeSectionDialog();
   };
@@ -398,19 +396,21 @@ export default function SchemaEditor() {
     });
   };
 
-  const handleSectionTitleChange = (sectionIndex: number, newTitle: string) => {
+  const handleSectionTitleChange = (
+    sectionIndex: number,
+    newSectionName: string
+  ) => {
     if (!editingSchema || !isEditable) return;
 
-    if (checkSectionNameExists(newTitle, sectionIndex)) {
-      setDuplicateNameError(`Section "${newTitle}" already exists`);
+    if (checkSectionNameExists(newSectionName, sectionIndex)) {
+      setDuplicateNameError(`Section "${newSectionName}" already exists`);
       openDuplicateNameDialog();
       return;
     }
-
     const newSections = [...editingSchema.sections];
     newSections[sectionIndex] = {
       ...newSections[sectionIndex],
-      title: newTitle,
+      title: newSectionName,
     };
 
     setEditingSchema({
@@ -548,7 +548,6 @@ export default function SchemaEditor() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSchemaToRename(s);
-                                setNewSchemaName(s.name);
                                 openSchemaRenameDialog();
                               }}
                               variant="contained"
@@ -724,7 +723,6 @@ export default function SchemaEditor() {
                             <IconButton
                               onClick={() => {
                                 setSectionToRenameIndex(originalIndex);
-                                setNewSectionTitle(section.title);
                                 openRenameDialog();
                               }}
                               sx={{
@@ -875,231 +873,70 @@ export default function SchemaEditor() {
       />
 
       {/* New Schema Dialog */}
-      <Dialog
+      <CreateSchemaDialog
         open={newSchemaDialogOpen}
         onClose={closeNewSchemaDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>Create Schema</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Schema Name"
-            value={newSchemaName}
-            onChange={(e) => setNewSchemaName(e.target.value)}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeNewSchemaDialog} sx={{ borderRadius: 2 }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreateSchema}
-            variant="contained"
-            disabled={!newSchemaName.trim()}
-            sx={{ borderRadius: 2 }}
-          >
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onCreate={handleCreateSchema}
+      />
 
       {/* Rename Section Dialog */}
-      <Dialog
+      <RenameSectionDialog
         open={renameDialogOpen}
         onClose={closeRenameDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>Rename Section</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Section Name"
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeRenameDialog} sx={{ borderRadius: 2 }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              const trimmedTitle = newSectionTitle.trim();
-              if (sectionToRenameIndex !== null && trimmedTitle) {
-                handleSectionTitleChange(sectionToRenameIndex, trimmedTitle);
-              }
-              closeRenameDialog();
-            }}
-            variant="contained"
-            disabled={!newSectionTitle.trim()}
-            sx={{ borderRadius: 2 }}
-          >
-            Rename
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onRename={(newSectionName) => {
+          if (sectionToRenameIndex !== null) {
+            handleSectionTitleChange(sectionToRenameIndex, newSectionName);
+          }
+          closeRenameDialog();
+        }}
+        initialName={
+          sectionToRenameIndex !== null
+            ? editingSchema?.sections[sectionToRenameIndex]?.title || ""
+            : ""
+        }
+      />
 
       {/* Rename Schema Dialog */}
-      <Dialog
+      <RenameSchemaDialog
         open={schemaRenameDialogOpen}
         onClose={closeSchemaRenameDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>Rename Schema</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Schema Name"
-            value={newSchemaName}
-            onChange={(e) => setNewSchemaName(e.target.value)}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeSchemaRenameDialog} sx={{ borderRadius: 2 }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleRenameSchema}
-            disabled={!newSchemaName.trim()}
-            variant="contained"
-            sx={{ borderRadius: 2 }}
-          >
-            Rename
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onRename={handleRenameSchema}
+        initialName={schemaToRename?.name || ""}
+      />
 
       {/* Delete Schema Confirmation Dialog */}
-      <Dialog
+      <DeleteSchemaDialog
         open={deleteSchemaDialogOpen}
         onClose={closeDeleteSchemaDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>
-          Delete Schema "{schemaToDelete?.name}"?
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this schema? This action cannot be
-            undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={handleDeleteSchema}
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 2 }}
-          >
-            Delete
-          </Button>
-          <Button onClick={closeDeleteSchemaDialog} sx={{ borderRadius: 2 }}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDelete={handleDeleteSchema}
+        schemaName={schemaToDelete?.name || null}
+      />
 
       {/* Delete Section Dialog */}
-      <Dialog
+      <DeleteSectionDialog
         open={deleteSectionDialogOpen}
         onClose={closeDeleteSectionDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>
-          Delete Section "
-          {sectionToDeleteIndex !== null &&
-            editingSchema?.sections[sectionToDeleteIndex]?.title}
-          "?
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this section and all of its fields?
-            This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={handleDeleteSection}
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 2 }}
-          >
-            Delete
-          </Button>
-          <Button onClick={closeDeleteSectionDialog} sx={{ borderRadius: 2 }}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDelete={handleDeleteSection}
+        sectionName={
+          sectionToDeleteIndex !== null
+            ? editingSchema?.sections[sectionToDeleteIndex]?.title || null
+            : null
+        }
+      />
 
       {/* Duplicate Name Warning Dialog */}
-      <Dialog
+      <DuplicateNameDialog
         open={duplicateNameDialogOpen}
         onClose={closeDuplicateNameDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle
-          sx={{
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <WarningIcon color="warning" />
-          Duplicate Name
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>{duplicateNameError}</DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeDuplicateNameDialog} sx={{ borderRadius: 2 }}>
-            Ok
-          </Button>
-        </DialogActions>
-      </Dialog>
+        errorMessage={duplicateNameError}
+      />
 
       {/* Unsaved Changes Warning Dialog */}
-      <Dialog
+      <UnsavedSchemaChangesDialog
         open={unsavedChangesDialogOpen}
         onClose={closeUnsavedChangesDialog}
-        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
-      >
-        <DialogTitle
-          sx={{
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <WarningIcon color="warning" />
-          Unsaved Changes
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            You have unsaved changes. Are you sure you want to leave without
-            saving? All changes will be lost.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeUnsavedChangesDialog} sx={{ borderRadius: 2 }}>
-            Continue Editing
-          </Button>
-          <Button
-            onClick={handleDiscardChanges}
-            variant="contained"
-            color="warning"
-            sx={{ borderRadius: 2 }}
-          >
-            Discard Changes
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDiscard={handleDiscardChanges}
+      />
 
       <Snackbar
         open={snackbarOpen}
