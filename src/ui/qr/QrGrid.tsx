@@ -1,4 +1,4 @@
-import { Card, Grid, Typography, useTheme } from "@mui/material";
+import { Card, Grid, Stack, Typography, useTheme } from "@mui/material";
 
 interface QrGridProps {
   validQrCodes: QrCode[];
@@ -19,6 +19,18 @@ export default function QrGrid({
 }: QrGridProps) {
   const theme = useTheme();
 
+  const getDataFromQrName = (name: string) => {
+    const [teamNumber, matchNumber, timestamp] = name
+      .replace(".svg", "")
+      .split("-");
+
+    return {
+      TeamNumber: teamNumber,
+      MatchNumber: matchNumber,
+      Timestamp: timestamp,
+    };
+  };
+
   const renderCard = (qr: QrCode, disabled = false) => (
     <Card
       elevation={disabled ? 1 : 2}
@@ -38,17 +50,29 @@ export default function QrGrid({
         transition: "all 0.2s ease",
       }}
     >
-      <img
-        src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
-        alt="QR Code"
-        style={{
-          borderRadius: 8,
-          width: "100%",
-          aspectRatio: "1/1",
-          objectFit: "contain",
-        }}
-      />
-      <Typography>{qr.name}</Typography>
+      <Stack direction={"row"} spacing={2} alignItems={"center"}>
+        <img
+          src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
+          alt={`Team: ${getDataFromQrName(qr.name).TeamNumber}, Match: ${
+            getDataFromQrName(qr.name).MatchNumber
+          }`}
+          style={{
+            borderRadius: 8,
+            width: "clamp(60px, 30%, 100px)",
+            height: "auto",
+            aspectRatio: "1/1",
+            flexShrink: 0,
+          }}
+        />
+        <Stack direction={"column"} spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="subtitle1" noWrap>
+            Team: {getDataFromQrName(qr.name).TeamNumber}
+          </Typography>
+          <Typography variant="subtitle1" noWrap>
+            Match: {getDataFromQrName(qr.name).MatchNumber}
+          </Typography>
+        </Stack>
+      </Stack>
     </Card>
   );
 
@@ -56,7 +80,7 @@ export default function QrGrid({
     <>
       <Grid container spacing={2}>
         {validQrCodes.map((qr, i) => (
-          <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={i}>
             {renderCard(qr)}
           </Grid>
         ))}
