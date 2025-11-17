@@ -2,6 +2,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Box,
   Button,
   Card,
   Dialog,
@@ -17,12 +18,15 @@ import {
   useTheme,
 } from "@mui/material";
 import DropdownInput from "./components/DropdownInput";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useToggle from "../hooks/useToggle";
 import ExpandIcon from "@mui/icons-material/ExpandMoreRounded";
+import DragIcon from "@mui/icons-material/DragIndicatorRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import useDialog from "../hooks/useDialog";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /* Properties for the Component Card*/
 interface ComponentCardProps {
@@ -40,10 +44,50 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   const [renameDialogOpen, openRenameDialog, closeRenameDialog] = useDialog();
   const [itemToDelete, setItemToDelete] = useState<Component | null>(null);
   const [newFieldName, setNewFieldName] = useState("");
+  const [dropdownInputValue, setDropdownInputValue] = useState(
+    component.props?.options?.join(",") || ""
+  );
+  const [dropdownError, setDropdownError] = useState<string | null>(null);
   const theme = useTheme();
+
+  const isProtected =
+    component.name === "Match Number" || component.name === "Team Number";
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: component.id
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? "none" : transition, // Disable transition during drag
+    opacity: isDragging ? 0.3 : 1,
+    cursor: isDragging ? "grabbing" : "default",
+  };
+
+  // Ref to track the ID of the component whose dropdownInputValue was last synced from props.
+  const lastSyncedDropdownComponentId = useRef(component.id);
+
+  const isTypeUnselected = !editedComponent.type;
 
   useEffect(() => {
     setEditedComponent(component);
+    if (component.id !== lastSyncedDropdownComponentId.current) {
+      const initialDropdownValue = component.props?.options?.join(",") || "";
+      setDropdownInputValue(initialDropdownValue);
+      if (component.type.toLowerCase() === "dropdown") {
+        validateDropdown(initialDropdownValue);
+      }
+      lastSyncedDropdownComponentId.current = component.id;
+    } else if (component.type.toLowerCase() === "dropdown") {
+      validateDropdown(dropdownInputValue);
+    }
   }, [component]);
 
   const handleFieldChange = (field: keyof Component | string, value: any) => {
@@ -62,17 +106,53 @@ export default function EditableComponentCard(props: ComponentCardProps) {
     onChange(newComponent);
   };
 
+  const validateDropdown = (value: string) => {
+    const options = value
+      .split(",")
+      .map((opt) => opt.trim())
+      .filter(Boolean);
+
+    if (value.trim() === "") {
+      setDropdownError("At least one option is required.");
+      return false;
+    }
+    if (options.length === 0 && value.trim() !== "") {
+      setDropdownError("Invalid format. Ensure options are comma-separated.");
+      return false;
+    }
+
+    setDropdownError(null);
+    return true;
+  };
+
   const renderTypeSpecificProps = () => {
     switch (editedComponent.type.toLowerCase()) {
       case "dropdown":
         return (
           <TextField
             label="Options (comma-separated)"
-            value={editedComponent.props?.options?.join(",") || ""}
-            onChange={(e) =>
-              handleFieldChange("options", e.target.value.split(","))
-            }
+            value={dropdownInputValue}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setDropdownInputValue(newValue);
+              const isValid = validateDropdown(newValue);
+              const options = newValue
+                .split(",")
+                .map((opt) => opt.trim())
+                .filter(Boolean);
+              if (isValid) {
+                handleFieldChange("options", options);
+              }
+            }}
+            error={!!dropdownError}
+            helperText={dropdownError}
+            slotProps={{ formHelperText: { sx: { fontFamily: "inherit" } } }}
             fullWidth
+            sx={{
+              "& legend": {
+                transition: "unset",
+              },
+            }}
           />
         );
       case "counter":
@@ -176,7 +256,14 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   return (
     <>
       <Accordion
+        ref={setNodeRef}
+        style={style}
         expanded={active}
+        onChange={() => {
+          if (!isDragging) {
+            toggleActive();
+          }
+        }}
         disableGutters
         elevation={0}
         sx={{
@@ -190,8 +277,10 @@ export default function EditableComponentCard(props: ComponentCardProps) {
           borderRadius: 3,
           borderWidth: 2,
           borderStyle: "solid",
-          borderColor: active
-            ? theme.palette.secondary.main
+          borderColor: isTypeUnselected
+            ? theme.palette.error.main
+            : active
+            ? theme.palette.primary.main
             : theme.palette.divider,
           transition: "all 0.3s ease",
           "&:before": {
@@ -199,8 +288,14 @@ export default function EditableComponentCard(props: ComponentCardProps) {
           },
           "&:hover": !active
             ? {
-                borderColor: theme.palette.secondary.main,
-                boxShadow: `0 4px 12px ${theme.palette.secondary.main}15`,
+                borderColor: isTypeUnselected
+                  ? theme.palette.error.light
+                  : theme.palette.primary.main,
+                boxShadow: `0 4px 12px ${
+                  isTypeUnselected
+                    ? theme.palette.error.main
+                    : theme.palette.primary.main
+                }15`,
               }
             : {},
         }}
@@ -209,12 +304,13 @@ export default function EditableComponentCard(props: ComponentCardProps) {
           expandIcon={
             <ExpandIcon
               sx={{
-                color: theme.palette.secondary.main,
+                color: isTypeUnselected
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
                 fontSize: 28,
               }}
             />
           }
-          onClick={toggleActive}
         >
           <Stack
             direction="row"
@@ -223,34 +319,82 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             sx={{ flexGrow: 1 }}
             justifyContent="space-between"
           >
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {editedComponent.name}
-            </Typography>
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setNewFieldName(editedComponent.name);
-                openRenameDialog();
-              }}
-              sx={{
-                "&:hover": {
-                  backgroundColor: `${theme.palette.secondary.main}20`,
-                  color: theme.palette.secondary.main,
-                },
-              }}
-            >
-              <EditIcon />
-            </IconButton>
+            <Stack direction="row" spacing={0} alignItems="center">
+              <Box
+                {...listeners}
+                {...attributes}
+                sx={{
+                  p: 1,
+                  cursor: isDragging ? "grabbing" : "grab",
+                  display: "flex",
+                  alignItems: "center",
+                  "&:hover": {
+                    opacity: 0.7,
+                  },
+                }}
+              >
+                <DragIcon />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {editedComponent.name}
+              </Typography>
+            </Stack>
+            <Stack direction={"row"}>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNewFieldName(editedComponent.name);
+                  openRenameDialog();
+                }}
+                sx={{
+                  "&:hover": {
+                    backgroundColor: `${
+                      isTypeUnselected
+                        ? theme.palette.error.main
+                        : theme.palette.primary.main
+                    }20`,
+                    color: isTypeUnselected
+                      ? theme.palette.error.main
+                      : theme.palette.primary.main,
+                  },
+                }}
+                disabled={isProtected}
+              >
+                <EditIcon />
+              </IconButton>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setItemToDelete(editedComponent);
+                  openDeleteDialog();
+                }}
+                sx={{
+                  "&:hover": {
+                    backgroundColor: `${theme.palette.error.main}20`,
+                    color: theme.palette.error.main,
+                  },
+                }}
+                disabled={isProtected}
+              >
+                <DeleteIcon />
+              </IconButton>
+            </Stack>
           </Stack>
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={2}>
+            {isTypeUnselected && (
+              <Typography color="error" variant="subtitle2">
+                Please select a field type.
+              </Typography>
+            )}
             <DropdownInput
               label="Type"
               value={
                 editedComponent.type.charAt(0).toUpperCase() +
                 editedComponent.type.slice(1)
               }
+              disabled={isProtected}
               onChange={(value) =>
                 handleFieldChange("type", value.toLowerCase())
               }
@@ -260,6 +404,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
               control={
                 <Switch
                   checked={editedComponent.required || false}
+                  disabled={isProtected}
                   onChange={(e) =>
                     handleFieldChange("required", e.target.checked)
                   }
@@ -268,21 +413,6 @@ export default function EditableComponentCard(props: ComponentCardProps) {
               label="Required?"
             />
             {renderTypeSpecificProps()}
-            <Button
-              onClick={() => {
-                setItemToDelete(editedComponent);
-                openDeleteDialog();
-              }}
-              color="error"
-              variant="contained"
-              startIcon={<DeleteIcon />}
-              sx={{
-                borderRadius: 2,
-                mt: 1,
-              }}
-            >
-              Delete Field
-            </Button>
           </Stack>
         </AccordionDetails>
       </Accordion>
