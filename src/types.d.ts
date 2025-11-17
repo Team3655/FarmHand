@@ -41,6 +41,7 @@ interface QrCode {
   name: string;
   data: string;
   image: string;
+  archived?: boolean;
 }
 
 /**

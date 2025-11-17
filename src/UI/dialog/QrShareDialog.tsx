@@ -15,32 +15,55 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import CopyIcon from "@mui/icons-material/ContentCopyRounded";
+import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import DownloadIcon from "@mui/icons-material/DownloadRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
-import { decodeQR, deleteQrCode } from "../../utils/QrUtils";
+import {
+  archiveQrCode,
+  decodeQR,
+  deleteQrCode,
+  unarchiveQrCode,
+} from "../../utils/QrUtils";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import useDialog from "../../hooks/useDialog";
 import { saveFileWithDialog } from "../../utils/GeneralUtils";
+import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
+import UnarchiveIcon from "@mui/icons-material/UnarchiveRounded";
 
 /**
  * Props for the QR export dialog
  */
-
 interface QrExportDialogProps {
   open: boolean;
   onClose: () => void;
   qrCodeData: QrCode;
   handleSaveQR?: () => void;
   forQrPage?: boolean;
+  isArchived?: boolean;
   onDelete?: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
+  canDelete?: boolean;
 }
 
 export default function QrShareDialog(props: QrExportDialogProps) {
-  const { open, onClose, qrCodeData, handleSaveQR, forQrPage, onDelete } =
-    props;
+  const {
+    open,
+    onClose,
+    qrCodeData,
+    handleSaveQR,
+    forQrPage,
+    isArchived,
+    onDelete,
+    onArchive,
+    onUnarchive,
+    canDelete,
+  } = props;
   const theme = useTheme();
   const [deletePopupOpen, openDeletePopup, closeDeletePopup] = useDialog();
+  const [archivePopupOpen, openArchivePopup, closeArchivePopup] = useDialog();
+  const [unarchivePopupOpen, openUnarchivePopup, closeUnarchivePopup] = useDialog();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const isLandscape = useMediaQuery("(orientation: landscape)");
 
@@ -60,6 +83,21 @@ export default function QrShareDialog(props: QrExportDialogProps) {
     closeDeletePopup();
     onClose();
     onDelete?.();
+  };
+
+  const handleArchive = async () => {
+    if (!qrCodeData) return;
+    await archiveQrCode(qrCodeData);
+    closeArchivePopup();
+    onClose();
+    onArchive?.();
+  };
+
+  const handleUnarchive = async () => {
+    await unarchiveQrCode(qrCodeData);
+    closeUnarchivePopup();
+    onClose();
+    onUnarchive?.();
   };
 
   if (!qrCodeData) return null;
@@ -187,29 +225,54 @@ export default function QrShareDialog(props: QrExportDialogProps) {
               </Button>
             </Stack>
 
-            {!forQrPage && (
-              <Button
-                color="primary"
-                variant="contained"
-                sx={{
-                  width: "100%",
-                  borderRadius: 2,
-                }}
-                onClick={handleSaveQR}
-              >
-                Save to Match History
-              </Button>
-            )}
-            {forQrPage && (
-              <Button
-                color="error"
-                variant="contained"
-                onClick={openDeletePopup}
-                sx={{ width: "100%", borderRadius: 2 }}
-              >
-                Delete QR
-              </Button>
-            )}
+            <Stack spacing={1} width="100%">
+              {!forQrPage && (
+                <Button
+                  color="primary"
+                  variant="contained"
+                  sx={{
+                    width: "100%",
+                    borderRadius: 2,
+                  }}
+                  onClick={handleSaveQR}
+                >
+                  Save to Match History
+                </Button>
+              )}
+              {forQrPage && !isArchived && (
+                <Button
+                  color="warning"
+                  variant="outlined"
+                  onClick={openArchivePopup}
+                  startIcon={<ArchiveIcon />}
+                  sx={{ width: "100%", borderRadius: 2 }}
+                >
+                  Archive
+                </Button>
+              )}
+              {isArchived && (
+                <Button
+                  color="secondary"
+                  variant="outlined"
+                  onClick={openUnarchivePopup}
+                  startIcon={<UnarchiveIcon />}
+                  sx={{ width: "100%", borderRadius: 2 }}
+                >
+                  Unarchive
+                </Button>
+              )}
+              {forQrPage && canDelete && (
+                <Button
+                  color="error"
+                  variant="contained"
+                  onClick={openDeletePopup}
+                  sx={{ width: "100%", borderRadius: 2 }}
+                  startIcon={<DeleteIcon />}
+                >
+                  Delete QR
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </DialogContent>
       </Dialog>
@@ -235,8 +298,11 @@ export default function QrShareDialog(props: QrExportDialogProps) {
           }}
         >
           <HelpIcon sx={{ mr: 1 }} />
-          Are you sure you want to delete this code?
+          Delete Qr
         </DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this code? This action cannot be undone.
+        </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={handleDelete}
@@ -247,6 +313,88 @@ export default function QrShareDialog(props: QrExportDialogProps) {
             Delete
           </Button>
           <Button onClick={closeDeletePopup} sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Archive Qr confirmation popup */}
+      <Dialog
+        open={archivePopupOpen}
+        onClose={closeArchivePopup}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              minWidth: 400,
+            },
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            fontWeight: 600,
+          }}
+        >
+          <HelpIcon sx={{ mr: 1 }} />
+          Archive Qr
+        </DialogTitle>
+        <DialogContent>
+          Are you sure you want to archive this code?
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={handleArchive}
+            color="warning"
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
+            Archive
+          </Button>
+          <Button onClick={closeArchivePopup} sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Unarchive Qr confirmation popup */}
+      <Dialog
+        open={unarchivePopupOpen}
+        onClose={closeUnarchivePopup}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              minWidth: 400,
+            },
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            fontWeight: 600,
+          }}
+        >
+          <HelpIcon sx={{ mr: 1 }} />
+          Unarchive Qr
+        </DialogTitle>
+        <DialogContent>
+          Are you sure you want to unarchive this code?
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={handleUnarchive}
+            color="secondary"
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
+            Unarchive
+          </Button>
+          <Button onClick={closeUnarchivePopup} sx={{ borderRadius: 2 }}>
             Cancel
           </Button>
         </DialogActions>

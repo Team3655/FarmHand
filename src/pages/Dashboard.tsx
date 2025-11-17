@@ -36,6 +36,8 @@ export default function LeadScoutDashboard() {
     const processQrCodes = async () => {
       if (!qrCodes || availableSchemas.length === 0) return;
 
+      const nonArchivedQrCodes = qrCodes.filter((qr) => !qr.archived);
+
       const matchesMap = new Map<number, Array<{ deviceID: number }>>();
       const schemaHashMap = new Map<string, Schema>();
 
@@ -45,7 +47,7 @@ export default function LeadScoutDashboard() {
         schemaHashMap.set(hash, s.schema);
       }
 
-      for (const qr of qrCodes) {
+      for (const qr of nonArchivedQrCodes) {
         try {
           if (!validateQR(qr.data)) continue;
           const decoded = await decodeQR(qr.data);

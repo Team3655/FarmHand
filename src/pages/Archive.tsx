@@ -1,54 +1,46 @@
 import {
   Box,
-  Button,
-  Snackbar,
-  Stack,
-  Typography,
-  IconButton,
-  Slide,
   Paper,
+  Typography,
+  Button,
   Chip,
+  Stack,
+  useTheme,
+  Fab,
+  Zoom,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/CloseRounded";
-import { useSchema } from "../context/SchemaContext";
-import { useAsyncFetch } from "../hooks/useAsyncFetch";
-import { useQrSelection } from "../hooks/useQrSelection";
-import useDialog from "../hooks/useDialog";
-import QrScannerDialog from "../ui/dialog/QrScannerDialog";
 import QrShareDialog from "../ui/dialog/QrShareDialog";
-import ExportDialog from "../ui/dialog/ExportDialog";
-import { exportQrCodesToCsv, exportQrCodesToJson } from "../utils/GeneralUtils";
-import { archiveQrCode, fetchQrCodes } from "../utils/QrUtils";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
-import FilterIcon from "@mui/icons-material/FilterListRounded";
+import FilterIcon from "@mui/icons-material/FilterAltRounded";
 import SortIcon from "@mui/icons-material/SortRounded";
-import { useMemo, useState } from "react";
-import QrPageFab from "../ui/qr/QrFab";
-import QrGrid from "../ui/qr/QrGrid";
-import { useTheme } from "@mui/material/styles";
+import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
+import UnarchiveIcon from "@mui/icons-material/UnarchiveRounded";
+import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import PageHeader from "../ui/PageHeader";
+import QrGrid from "../ui/qr/QrGrid";
+import { useMemo, useState } from "react";
+import { useAsyncFetch } from "../hooks/useAsyncFetch";
+import useDialog from "../hooks/useDialog";
+import { useQrSelection } from "../hooks/useQrSelection";
+import { fetchQrCodes, unarchiveQrCode, deleteQrCode } from "../utils/QrUtils";
 
-export default function QRPage() {
+export default function ArchivePage() {
   const theme = useTheme();
-  const { availableSchemas } = useSchema();
   const [allQrCodes, loading, error, refetch] = useAsyncFetch(fetchQrCodes);
   const qrCodes = useMemo(
-    () => allQrCodes?.filter((code) => !code.archived),
+    () => allQrCodes?.filter((code) => code.archived) || [],
     [allQrCodes]
   );
-  const selection = useQrSelection(qrCodes || []);
-  const [scannerOpen, openScanner, closeScanner] = useDialog();
+  const selection = useQrSelection(qrCodes);
   const [qrDialogOpen, openQrDialog, closeQrDialog] = useDialog();
-  const [exportDialogOpen, openExportDialog, closeExportDialog] = useDialog();
-  const [archiveDialogOpen, openArchiveDialog, closeArchiveDialog] =
+  const [unarchiveDialogOpen, openUnarchiveDialog, closeUnarchiveDialog] =
     useDialog();
+  const [deleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useDialog();
   const [activeQrCode, setActiveQrCode] = useState<QrCode | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [filename, setFilename] = useState("");
 
   if (loading) return <Typography>Loading...</Typography>;
   if (error)
@@ -61,37 +53,28 @@ export default function QRPage() {
     selection.toggleSelecting();
   };
 
-  const executeExport = async (type: "csv" | "json") => {
-    if (selection.selectedCodes.length === 0) return;
-    const fn =
-      type === "csv"
-        ? await exportQrCodesToCsv(selection.selectedCodes, availableSchemas)
-        : await exportQrCodesToJson(selection.selectedCodes, availableSchemas);
-    setFilename(fn);
-    setSuccess(true);
-    selection.resetSelection();
-    closeExportDialog();
-  };
-
-  const executeMassArchive = async () => {
+  const handleMassUnarchive = async () => {
     await Promise.all(
-      selection.selectedCodes.map(async (c) => await archiveQrCode(c))
+      selection.selectedCodes.map(async (c) => await unarchiveQrCode(c))
     );
     selection.resetSelection();
-    closeArchiveDialog();
+    closeUnarchiveDialog();
+    toggleSelectionMode();
+    refetch();
+  };
+
+  const handleMassDelete = async () => {
+    await Promise.all(
+      selection.selectedCodes.map(async (c) => await deleteQrCode(c))
+    );
+    selection.resetSelection();
+    closeDeleteDialog();
     toggleSelectionMode();
     refetch();
   };
 
   return (
     <>
-      <QrPageFab
-        selecting={selection.selecting}
-        disabled={selection.noCodesSelected}
-        onScan={openScanner}
-        onExport={openExportDialog}
-        onMassArchive={openArchiveDialog}
-      />
       {!qrCodes || qrCodes.length === 0 ? (
         <Box
           sx={{
@@ -109,7 +92,7 @@ export default function QRPage() {
             sx={{
               p: 6,
               borderRadius: 3,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}10 0%, ${theme.palette.primary.main}05 100%)`,
+              background: `linear-gradient(135deg, ${theme.palette.secondary.main}10 0%, ${theme.palette.secondary.main}05 100%)`,
               border: `2px dashed ${theme.palette.divider}`,
               maxWidth: 400,
             }}
@@ -118,30 +101,16 @@ export default function QRPage() {
               sx={{
                 fontSize: 80,
                 mb: 2,
-                color: theme.palette.primary.main,
+                color: theme.palette.secondary.main,
                 opacity: 0.5,
               }}
             />
-            <Typography
-              variant="h6"
-              color="text.primary"
-              gutterBottom
-              sx={{ fontWeight: 600 }}
-            >
-              No QR codes found
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+              Archive Empty
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Scan a QR code or scout a match to get started
+              Add saved codes to the archive to see them here
             </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<QrCodeIcon />}
-              onClick={openScanner}
-              sx={{ borderRadius: 2 }}
-            >
-              Scan QR Code
-            </Button>
           </Paper>
         </Box>
       ) : (
@@ -149,11 +118,11 @@ export default function QRPage() {
           <Box px={3} pt={2}>
             {/* Header */}
             <PageHeader
-              icon={<QrCodeIcon sx={{ fontSize: 28 }} />}
-              title="QR Codes"
+              icon={<ArchiveIcon sx={{ fontSize: 28 }} />}
+              title="QR Archive"
               subtitle={`${qrCodes.length} code${
                 qrCodes.length !== 1 ? "s" : ""
-              } collected`}
+              } archived`}
               trailingComponent={
                 selection.selecting &&
                 selection.selectedCodes.length > 0 && (
@@ -229,83 +198,128 @@ export default function QRPage() {
               toggleSelectMode={toggleSelectionMode}
             />
           </Box>
+
+          {/* Floating Action Buttons */}
+          <Zoom in={selection.selecting} unmountOnExit>
+            <Stack
+              direction={"row"}
+              justifyContent={"space-between"}
+              sx={{
+                position: "fixed",
+                bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+                left: 0,
+                right: 0,
+                paddingLeft: "calc(16px + env(safe-area-inset-left, 0px))",
+                paddingRight: "calc(16px + env(safe-area-inset-right, 0px))",
+              }}
+            >
+              <Fab
+                color="error"
+                variant="extended"
+                size="large"
+                disabled={selection.noCodesSelected}
+                onClick={openDeleteDialog}
+              >
+                <DeleteIcon sx={{ mr: 1 }} /> Delete
+              </Fab>
+              <Fab
+                color="secondary"
+                variant="extended"
+                size="large"
+                disabled={selection.noCodesSelected}
+                onClick={openUnarchiveDialog}
+              >
+                <UnarchiveIcon sx={{ mr: 1 }} /> Unarchive
+              </Fab>
+            </Stack>
+          </Zoom>
         </>
       )}
 
-      <QrScannerDialog
-        open={scannerOpen}
-        onClose={closeScanner}
-        onImport={refetch}
-      />
       <QrShareDialog
         qrCodeData={activeQrCode!}
         open={qrDialogOpen}
         onClose={closeQrDialog}
         forQrPage
-        isArchived={false}
+        isArchived
         onDelete={refetch}
-        onArchive={refetch}
-      />
-      <ExportDialog
-        open={exportDialogOpen}
-        onClose={closeExportDialog}
-        onExport={executeExport}
+        onUnarchive={refetch}
+        canDelete
       />
 
-      {/* Mass Archive Confirmation Dialog */}
+      {/* Unarchive Confirmation Dialog */}
       <Dialog
-        open={archiveDialogOpen}
-        onClose={closeArchiveDialog}
+        open={unarchiveDialogOpen}
+        onClose={closeUnarchiveDialog}
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Archive QR Codes</DialogTitle>
+        <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
+          <UnarchiveIcon sx={{ mr: 1 }} />
+          Unarchive QR Codes
+        </DialogTitle>
         <DialogContent>
           <Typography>
-            Would you like to archive {selection.selectedCodes.length} match
-            {selection.selectedCodes.length !== 1 ? "es" : ""}?
+            Would you like to unarchive {selection.selectedCodes.length} code
+            {selection.selectedCodes.length !== 1 ? "s" : ""}?
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
-            onClick={closeArchiveDialog}
+            onClick={closeUnarchiveDialog}
             variant="outlined"
             sx={{ borderRadius: 2 }}
           >
             Cancel
           </Button>
           <Button
-            onClick={executeMassArchive}
-            color="warning"
+            onClick={handleMassUnarchive}
+            color="secondary"
             variant="contained"
             sx={{ borderRadius: 2 }}
           >
-            Archive
+            Unarchive
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={success}
-        onClose={() => setSuccess(false)}
-        message={`Exported to ${filename}`}
-        autoHideDuration={2000}
-        slots={{ transition: Slide }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        slotProps={{
-          content: {
-            sx: {
-              backgroundColor: theme.palette.success.main,
-              color: theme.palette.success.contrastText,
-            },
-          },
-        }}
-        action={
-          <IconButton onClick={() => setSuccess(false)}>
-            <CloseIcon />
-          </IconButton>
-        }
-      />
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={closeDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
+          <DeleteIcon sx={{ mr: 1 }} />
+          Delete QR Codes
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to permanently delete{" "}
+            {selection.selectedCodes.length} code
+            {selection.selectedCodes.length !== 1 ? "s" : ""}? This action
+            cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={closeDeleteDialog}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleMassDelete}
+            color="error"
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

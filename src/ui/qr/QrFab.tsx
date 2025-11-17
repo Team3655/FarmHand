@@ -1,14 +1,14 @@
-import { Box, Fab, Stack, Zoom } from "@mui/material";
+import { Fab, Stack, Zoom } from "@mui/material";
 import QrScanIcon from "@mui/icons-material/QrCodeScannerRounded";
 import ExportIcon from "@mui/icons-material/IosShareRounded";
-import DeleteIcon from "@mui/icons-material/DeleteRounded";
+import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
 
 interface Props {
   selecting: boolean;
   disabled: boolean;
   onScan: () => void;
   onExport: () => void;
-  onMassDelete: () => void;
+  onMassArchive: () => void;
 }
 
 export default function QrPageFab({
@@ -16,7 +16,7 @@ export default function QrPageFab({
   disabled,
   onScan,
   onExport,
-  onMassDelete,
+  onMassArchive,
 }: Props) {
   const fabStyle = {
     position: "fixed",
@@ -51,13 +51,13 @@ export default function QrPageFab({
           }}
         >
           <Fab
-            color="error"
+            color="warning"
             variant="extended"
             size="large"
             disabled={disabled}
-            onClick={onMassDelete}
+            onClick={onMassArchive}
           >
-            <DeleteIcon sx={{ mr: 1 }} /> Delete
+            <ArchiveIcon sx={{ mr: 1 }} /> Send to archive
           </Fab>
           <Fab
             color="primary"

@@ -27,6 +27,7 @@ import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import DashboardIcon from "@mui/icons-material/DashboardRounded";
 import SchemaIcon from "@mui/icons-material/SchemaRounded";
 import UpdateIcon from "@mui/icons-material/SystemUpdateRounded";
+import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
 import React, { Suspense, useEffect, useState } from "react";
 import {
   HashRouter,
@@ -44,6 +45,7 @@ import ScoutDataProvider from "./context/ScoutDataContext";
 import TractorDarkTheme from "./config/themes/TractorDarkTheme";
 import { useSettings } from "./context/SettingsContext";
 import TractorLightTheme from "./config/themes/TractorLightTheme";
+import Archive from "./pages/Archive";
 
 const Home = React.lazy(() => import("./pages/Home"));
 const Settings = React.lazy(() => import("./pages/Settings"));
@@ -89,6 +91,11 @@ const pages = [
     title: "Lead Scouter Dashboard",
     icon: <DashboardIcon />,
     path: "/dashboard",
+  },
+  {
+    title: "Archive",
+    icon: <ArchiveIcon />,
+    path: "/archive",
   },
   {
     title: "Settings",
@@ -426,6 +433,7 @@ export default function App() {
                     element={<SchemaEditor />}
                   />
                   <Route path="/dashboard" element={<LeadScoutDashboard />} />
+                  <Route path="/archive" element={<Archive />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </Suspense>
