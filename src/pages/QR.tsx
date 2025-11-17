@@ -8,6 +8,10 @@ import {
   Slide,
   Paper,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/CloseRounded";
 import { useSchema } from "../context/SchemaContext";
@@ -24,7 +28,7 @@ import SortIcon from "@mui/icons-material/SortRounded";
 import { useState } from "react";
 import QrPageFab from "../ui/qr/QrFab";
 import QrGrid from "../ui/qr/QrGrid";
-import { fetchQrCodes } from "../utils/QrUtils";
+import { deleteQrCode, fetchQrCodes } from "../utils/QrUtils";
 import { useTheme } from "@mui/material/styles";
 import PageHeader from "../ui/PageHeader";
 
@@ -36,6 +40,7 @@ export default function QRPage() {
   const [scannerOpen, openScanner, closeScanner] = useDialog();
   const [qrDialogOpen, openQrDialog, closeQrDialog] = useDialog();
   const [exportDialogOpen, openExportDialog, closeExportDialog] = useDialog();
+  const [deleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useDialog();
   const [activeQrCode, setActiveQrCode] = useState<QrCode | null>(null);
   const [success, setSuccess] = useState(false);
   const [filename, setFilename] = useState("");
@@ -63,6 +68,17 @@ export default function QRPage() {
     closeExportDialog();
   };
 
+  const executeMassDelete = async () => {
+    await Promise.all(
+      selection.selectedCodes.map(async (c) => await deleteQrCode(c))
+    );
+
+    selection.resetSelection();
+    closeDeleteDialog();
+    toggleSelectionMode();
+    refetch();
+  };
+
   return (
     <>
       <QrPageFab
@@ -70,6 +86,7 @@ export default function QRPage() {
         disabled={selection.noCodesSelected}
         onScan={openScanner}
         onExport={openExportDialog}
+        onMassDelete={openDeleteDialog}
       />
       {!qrCodes || qrCodes.length === 0 ? (
         <Box
@@ -228,6 +245,39 @@ export default function QRPage() {
         onClose={closeExportDialog}
         onExport={executeExport}
       />
+
+      {/* Mass Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={closeDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete QR Codes</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Would you like to delete {selection.selectedCodes.length} match
+            {selection.selectedCodes.length !== 1 ? "es" : ""}?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={executeMassDelete}
+            color="error"
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
+            Delete
+          </Button>
+          <Button
+            onClick={closeDeleteDialog}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={success}
