@@ -44,6 +44,13 @@ export default function QRPage() {
   if (error)
     return <Typography color="error">Error fetching QR codes</Typography>;
 
+  const toggleSelectionMode = () => {
+    if (selection.selecting) {
+      selection.resetSelection();
+    }
+    selection.toggleSelecting();
+  };
+
   const executeExport = async (type: "csv" | "json") => {
     if (selection.selectedCodes.length === 0) return;
     const fn =
@@ -198,6 +205,7 @@ export default function QRPage() {
                 openQrDialog();
                 setActiveQrCode(c);
               }}
+              toggleSelectMode={toggleSelectionMode}
             />
           </Box>
         </>
