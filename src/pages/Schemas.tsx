@@ -236,6 +236,8 @@ export default function Schemas() {
                             sx={{
                               backgroundColor: theme.palette.info.main,
                               color: theme.palette.info.contrastText,
+                              fontWeight: 600,
+                              fontFamily: theme.typography.body1,
                             }}
                           />
                         )}

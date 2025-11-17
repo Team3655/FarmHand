@@ -532,9 +532,7 @@ export default function SchemaEditor() {
       >
         <PageHeader
           icon={<SchemaIcon sx={{ fontSize: 28 }} />}
-          title={`${isEditable ? "Editing" : "Viewing"}: ${
-            editingSchema.name
-          }`}
+          title={`${isEditable ? "Editing" : "Viewing"}: ${editingSchema.name}`}
           subtitle={
             isEditable
               ? "Change or create form fields"
@@ -558,7 +556,8 @@ export default function SchemaEditor() {
                   label="Unsaved Changes"
                   color="warning"
                   sx={{
-                    fontFamily: theme.typography.subtitle2,
+                    fontWeight: 600,
+                    fontFamily: theme.typography.body1,
                   }}
                 />
               )}
@@ -595,10 +594,7 @@ export default function SchemaEditor() {
                 ),
                 endAdornment: searchQuery && (
                   <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setSearchQuery("")}
-                      size="small"
-                    >
+                    <IconButton onClick={() => setSearchQuery("")} size="small">
                       <CloseIcon />
                     </IconButton>
                   </InputAdornment>

@@ -380,14 +380,15 @@ export default function LeadScoutDashboard() {
                           )}
                         </Box>
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            Match {matchNum}
-                          </Typography>
+                          <Typography variant="h6">Match {matchNum}</Typography>
                         </Box>
                         <Chip
                           label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
                           color={isComplete ? "success" : "warning"}
-                          sx={{ fontWeight: 600 }}
+                          sx={{
+                            fontWeight: 600,
+                            fontFamily: theme.typography.body1,
+                          }}
                         />
                       </Stack>
                     </AccordionSummary>
@@ -430,6 +431,7 @@ export default function LeadScoutDashboard() {
                                       sx={{
                                         borderWidth: 2,
                                         fontWeight: 600,
+                                        fontFamily: theme.typography.body1,
                                       }}
                                     />
                                   ))}
@@ -456,6 +458,7 @@ export default function LeadScoutDashboard() {
                                       sx={{
                                         borderWidth: 2,
                                         fontWeight: 600,
+                                        fontFamily: theme.typography.body1,
                                       }}
                                     />
                                   ))}

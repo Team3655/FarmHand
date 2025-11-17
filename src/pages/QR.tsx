@@ -132,7 +132,7 @@ export default function QRPage() {
                   <Chip
                     label={`${selection.selectedCodes.length} selected`}
                     color="primary"
-                    sx={{ fontWeight: 600 }}
+                    sx={{ fontWeight: 600, fontFamily: theme.typography.body1 }}
                   />
                 )
               }

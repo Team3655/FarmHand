@@ -186,6 +186,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   size="small"
                   sx={{
                     fontWeight: 600,
+                    fontFamily: theme.typography.body1,
                     cursor: "pointer",
                     "&:hover": {
                       backgroundColor: theme.palette.warning.dark,
@@ -201,6 +202,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 backgroundColor: `${theme.palette.common.white}20`,
                 color: theme.palette.common.white,
                 fontWeight: 600,
+                fontFamily: theme.typography.body1,
               }}
             />
           </Stack>
@@ -265,6 +267,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                     height: 20,
                     fontSize: "0.7rem",
                     fontWeight: 600,
+                    fontFamily: theme.typography.body1,
                   }}
                 />
               )}
