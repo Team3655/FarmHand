@@ -8,6 +8,7 @@ import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
 import { isFieldInvalid } from "../../utils/GeneralUtils";
 import { useAsyncFetch } from "../../hooks/useAsyncFetch";
+import SliderInput from "./SliderInput";
 
 /* Props for the dynamic component
  */
@@ -28,13 +29,13 @@ export default function DynamicComponent(props: DynamicComponentProps) {
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const [value, setValue] = useState<any>(null);
   const showError = !valid && (touched || submitted);
-  
-  const fetchData = useCallback(() => getMatchData(component.id), [getMatchData, component.id]);
-  
-  const [storedValue, loading, error] = useAsyncFetch(
-    fetchData,
-    []
+
+  const fetchData = useCallback(
+    () => getMatchData(component.id),
+    [getMatchData, component.id]
   );
+
+  const [storedValue, loading, error] = useAsyncFetch(fetchData, []);
 
   useEffect(() => {
     if (loading && value === null) {
@@ -45,47 +46,57 @@ export default function DynamicComponent(props: DynamicComponentProps) {
       return;
     }
 
-    let isMounted = true;
-
-    let initial;
-    if (storedValue !== undefined && storedValue !== null) {
-      initial = storedValue;
-    } else {
-      switch (component.type) {
-        case "checkbox":
-          initial = component.props?.default ?? false;
-          break;
-        case "text":
-        case "dropdown":
-          initial = component.props?.default ?? "";
-          break;
-        case "counter":
-          initial = component.props?.default ?? 0;
-          break;
-        default:
-          initial = undefined;
-      }
+    let emptyStateValue;
+    switch (component.type) {
+      case "checkbox":
+        emptyStateValue = component.props?.default ?? false;
+        break;
+      case "text":
+      case "dropdown":
+        emptyStateValue = component.props?.default ?? "";
+        break;
+      case "counter":
+        emptyStateValue = component.props?.default ?? 0;
+        break;
+      case "slider":
+        if (component.props?.default !== undefined) {
+          emptyStateValue = component.props.default;
+        } else {
+          if (component.props?.selectsRange) {
+            emptyStateValue = [
+              component.props.min ?? 0,
+              component.props.max ?? 25,
+            ];
+          } else {
+            emptyStateValue = component.props?.min ?? 0;
+          }
+        }
+        break;
+      default:
+        emptyStateValue = undefined;
     }
+
+    const initialDisplayValue =
+      storedValue !== undefined && storedValue !== null
+        ? storedValue
+        : emptyStateValue;
 
     const isInvalid = isFieldInvalid(
       component.required!,
       component.type,
-      component.props?.default!,
-      initial
+      emptyStateValue,
+      initialDisplayValue
     );
 
-    if (isMounted) {
-      setValue(initial);
-      if (component.required) {
-        setValid(!isInvalid);
-        if (isInvalid) {
-          addError(component.name);
-        }
+    setValue(initialDisplayValue);
+    if (component.required) {
+      setValid(!isInvalid);
+      if (isInvalid) {
+        addError(component.name);
       }
     }
 
     return () => {
-      isMounted = false;
       if (component.required) {
         removeError(component.name);
       }
@@ -93,15 +104,7 @@ export default function DynamicComponent(props: DynamicComponentProps) {
         clearTimeout(debounceTimeout.current);
       }
     };
-  }, [
-    storedValue,
-    loading,
-    error,
-    component,
-    setValid,
-    addError,
-    removeError,
-  ]);
+  }, [storedValue, loading, error, component, setValid, addError, removeError, getMatchData]);
 
   const handleChange = (newValue: any) => {
     setValue(newValue);
@@ -181,7 +184,17 @@ export default function DynamicComponent(props: DynamicComponentProps) {
             error={showError}
           />
         );
-
+      case "slider":
+        return (
+          <SliderInput
+            max={component.props?.max ?? 25}
+            min={component.props?.min ?? 0}
+            value={value}
+            step={component.props?.step}
+            onChange={handleChange}
+            selectsRange={component.props?.selectsRange}
+          />
+        );
       default:
         return <Typography>Unknown component type</Typography>;
     }

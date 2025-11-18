@@ -47,8 +47,10 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   const [dropdownInputValue, setDropdownInputValue] = useState(
     component.props?.options?.join(",") || ""
   );
+  const [rawDefaultValue, setRawDefaultValue] = useState("");
   const [dropdownError, setDropdownError] = useState<string | null>(null);
   const theme = useTheme();
+  const [defaultValueError, setDefaultValueError] = useState<string | null>(null);
 
   const isProtected =
     component.name === "Match Number" || component.name === "Team Number";
@@ -61,7 +63,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
     transition,
     isDragging,
   } = useSortable({
-    id: component.id
+    id: component.id,
   });
 
   const style = {
@@ -72,23 +74,78 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   };
 
   // Ref to track the ID of the component whose dropdownInputValue was last synced from props.
-  const lastSyncedDropdownComponentId = useRef(component.id);
+  const lastSyncedComponentId = useRef(component.id);
 
   const isTypeUnselected = !editedComponent.type;
 
   useEffect(() => {
     setEditedComponent(component);
-    if (component.id !== lastSyncedDropdownComponentId.current) {
+    if (component.id !== lastSyncedComponentId.current) {
+      // Dropdown
       const initialDropdownValue = component.props?.options?.join(",") || "";
       setDropdownInputValue(initialDropdownValue);
       if (component.type.toLowerCase() === "dropdown") {
         validateDropdown(initialDropdownValue);
       }
-      lastSyncedDropdownComponentId.current = component.id;
+
+      // Default Value
+      const { default: defaultValue, selectsRange } = component.props || {};
+      let initialDefaultValue = "";
+      if (defaultValue !== undefined && defaultValue !== null) {
+        if (selectsRange) {
+          initialDefaultValue = Array.isArray(defaultValue)
+            ? defaultValue.join(",")
+            : `${defaultValue},${defaultValue}`;
+        } else {
+          initialDefaultValue = String(defaultValue);
+        }
+      }
+      setRawDefaultValue(initialDefaultValue);
+      lastSyncedComponentId.current = component.id;
     } else if (component.type.toLowerCase() === "dropdown") {
       validateDropdown(dropdownInputValue);
     }
   }, [component]);
+
+  useEffect(() => {
+    if (editedComponent.type.toLowerCase() !== "slider") {
+      setDefaultValueError(null);
+      return;
+    }
+
+    const {
+      default: defaultValue,
+      min,
+      max,
+      selectsRange,
+    } = editedComponent.props || {};
+
+    if (defaultValue === undefined) {
+      setDefaultValueError(null);
+      return;
+    }
+
+    const minVal = min === undefined ? -Infinity : min;
+    const maxVal = max === undefined ? Infinity : max;
+    let error: string | null = null;
+
+    if (selectsRange) {
+      const values = Array.isArray(defaultValue)
+        ? defaultValue
+        : [defaultValue, defaultValue];
+      if (values.length === 2) {
+        if (values[0] < minVal || values[1] > maxVal || values[0] > values[1]) {
+          error = `Range must be within ${min ?? "min"}-${max ?? "max"} and start <= end.`;
+        }
+      }
+    } else {
+      const value = Array.isArray(defaultValue) ? defaultValue[0] : defaultValue;
+      if (typeof value === "number" && (value < minVal || value > maxVal)) {
+        error = `Value must be within ${min ?? "min"}-${max ?? "max"}.`;
+      }
+    }
+    setDefaultValueError(error);
+  }, [editedComponent]);
 
   const handleFieldChange = (field: keyof Component | string, value: any) => {
     let newComponent: Component;
@@ -214,6 +271,104 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             }
             label="Multiline?"
           />
+        );
+
+      case "slider":
+        return (
+          <>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editedComponent.props?.selectsRange || false}
+                  onChange={(e) =>
+                    handleFieldChange("selectsRange", e.target.checked)
+                  }
+                />
+              }
+              label="Range Slider?"
+            />
+            <TextField
+              label="Step"
+              type="number"
+              value={editedComponent.props?.step ?? ""}
+              onChange={(e) => {
+                if (e.target.value === "") {
+                  handleFieldChange("step", undefined);
+                  return;
+                }
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value)) {
+                  handleFieldChange("step", value);
+                }
+              }}
+              fullWidth
+            />
+            <TextField
+              label="Default Value"
+              type="text"
+              value={rawDefaultValue}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setRawDefaultValue(newValue);
+
+                if (editedComponent.props?.selectsRange) {
+                  if (newValue.trim() === "") {
+                    handleFieldChange("default", undefined);
+                    return;
+                  }
+                  const parts = newValue.split(",");
+                  if (parts.length === 2) {
+                    const num1 = parseInt(parts[0].trim(), 10);
+                    const num2 = parseInt(parts[1].trim(), 10);
+                    if (!isNaN(num1) && !isNaN(num2)) {
+                      handleFieldChange("default", [num1, num2]);
+                    }
+                  }
+                } else {
+                  if (newValue.trim() === "") {
+                    handleFieldChange("default", undefined);
+                  } else {
+                    const num = parseInt(newValue, 10);
+                    if (!isNaN(num)) {
+                      handleFieldChange("default", num);
+                    }
+                  }
+                }
+              }}
+              fullWidth
+              error={!!defaultValueError}
+              helperText={defaultValueError}
+              slotProps={{ formHelperText: { sx: { fontFamily: "inherit" } } }}
+            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Min"
+                type="number"
+                value={editedComponent.props?.min ?? ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "min",
+                    parseInt(e.target.value) || undefined
+                  )
+                }
+                size="small"
+                fullWidth
+              />
+              <TextField
+                label="Max"
+                type="number"
+                value={editedComponent.props?.max ?? ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "max",
+                    parseInt(e.target.value) || undefined
+                  )
+                }
+                size="small"
+                fullWidth
+              />
+            </Stack>
+          </>
         );
       default:
         return null;
@@ -398,7 +553,16 @@ export default function EditableComponentCard(props: ComponentCardProps) {
               onChange={(value) =>
                 handleFieldChange("type", value.toLowerCase())
               }
-              options={["Text", "Counter", "Dropdown", "Checkbox"]}
+              options={[
+                "Checkbox",
+                "Counter",
+                "Dropdown",
+                "Text",
+                "Number",
+                "Slider",
+                "Timer",
+                "Grid",
+              ]}
             />
             <FormControlLabel
               control={

@@ -16,11 +16,21 @@ interface SectionData {
   fields: Component[];
 }
 
+type ComponentType =
+  | "checkbox"
+  | "counter"
+  | "dropdown"
+  | "text"
+  | "number"
+  | "slider"
+  | "timer"
+  | "grid";
+
 /** An individual component, type and props */
 interface Component {
   name: string;
   id: number;
-  type: string;
+  type: ComponentType;
   required?: boolean;
   props?: ComponentProps;
 }
@@ -34,6 +44,8 @@ interface ComponentProps {
   valid?: boolean;
   multiline?: boolean;
   options?: string[];
+  step?: number;
+  selectsRange?: boolean;
   onChange?: (value: any) => void;
 }
 
