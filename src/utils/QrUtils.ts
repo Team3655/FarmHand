@@ -15,15 +15,10 @@ import {
   readDir,
   readTextFile,
 } from "@tauri-apps/plugin-fs";
+import StoreManager from "./StoreManager";
 
 export type QrType = "match" | "schema" | "theme" | "settings";
 export type EncodedQr = string;
-
-export interface QrCode {
-  name: string;
-  data: string;
-  image: string;
-}
 
 export interface DecodedQr {
   deviceId: number;
@@ -76,9 +71,7 @@ function buildQrString(
  * @param currentSchemaHash an 8 character representation of the users current schema
  * @returns an object containing the type, schemaHash, and data encoded into the code
  */
-export async function decodeQR(
-  qrString: string
-): Promise<DecodedQr> {
+export async function decodeQR(qrString: string): Promise<DecodedQr> {
   const [prefix, type, schemaHash, deviceId, compressed] = qrString.split(":");
 
   if (prefix !== APP_PREFIX) throw new Error("Invalid QR prefix");
@@ -86,7 +79,12 @@ export async function decodeQR(
   if (!compressed) throw new Error("QR payload missing");
   const data = await decompressData(compressed);
 
-  return { deviceId: parseInt(deviceId), type: type as QrType, schemaHash, data };
+  return {
+    deviceId: parseInt(deviceId),
+    type: type as QrType,
+    schemaHash,
+    data,
+  };
 }
 
 /**
@@ -129,10 +127,33 @@ async function writeDataToQrCode(
 export const QrCodeBuilder = {
   buildFileName: (qrNameInfo: string[]) => generateQrFileName(qrNameInfo),
   build: {
-    MATCH: async (schemaHash: string, payload: any, qrNameInfo: string[], deviceId: number) =>
-      await writeDataToQrCode("match", schemaHash, payload, qrNameInfo, deviceId),
+    MATCH: async (
+      schemaHash: string,
+      payload: any,
+      qrNameInfo: string[],
+      deviceId: number
+    ) =>
+      await writeDataToQrCode(
+        "match",
+        schemaHash,
+        payload,
+        qrNameInfo,
+        deviceId
+      ),
   },
 };
+
+export async function archiveQrCode(qrCode: QrCode): Promise<void> {
+  await StoreManager.archiveQrCode(qrCode.name);
+}
+
+export async function unarchiveQrCode(qrCode: QrCode): Promise<void> {
+  await StoreManager.unarchiveQrCode(qrCode.name);
+}
+
+export async function isQrCodeArchived(qrCode: QrCode): Promise<boolean> {
+  return await StoreManager.isQrCodeArchived(qrCode.name);
+}
 
 export function validateQR(qrString: string) {
   const [prefix, type, schemaHash, _, compressed] = qrString.split(":");
@@ -141,6 +162,18 @@ export function validateQR(qrString: string) {
   }
   if (prefix === APP_PREFIX) return true;
   return false;
+}
+
+export function getDataFromQrName(name: string) {
+  const [teamNumber, matchNumber, timestamp] = name
+    .replace(".svg", "")
+    .split("-");
+
+  return {
+    TeamNumber: teamNumber,
+    MatchNumber: matchNumber,
+    Timestamp: timestamp,
+  };
 }
 
 export async function saveQrCode(code: QrCode) {
@@ -181,7 +214,12 @@ export async function createQrCodeFromImportedData(
 ) {
   const [_prefix, type, schemaHash, deviceId, compressed] = data.split(":");
 
-  const qrString = buildQrString(type as QrType, schemaHash, parseInt(deviceId), compressed);
+  const qrString = buildQrString(
+    type as QrType,
+    schemaHash,
+    parseInt(deviceId),
+    compressed
+  );
   const qrSvg = await invoke<string>("generate_qr_code", { data: qrString });
   const decoded = await decodeQR(data);
   console.log(decoded);
@@ -209,11 +247,14 @@ export async function fetchQrCodes(): Promise<QrCode[] | undefined> {
       const contents = await readTextFile(`saved-matches/${file.name}`, {
         baseDir: BaseDirectory.AppLocalData,
       });
+
+      const archived = await StoreManager.isQrCodeArchived(file.name);
       return {
         name: file.name,
         data: GetDescFromSvg(contents),
         image: contents,
-      };
+        archived,
+      } as QrCode;
     })
   );
 

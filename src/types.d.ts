@@ -41,6 +41,7 @@ interface QrCode {
   name: string;
   data: string;
   image: string;
+  archived?: boolean;
 }
 
 /**
@@ -61,3 +62,18 @@ interface Settings {
   EXPECTED_DEVICES_COUNT: number;
   LEAD_SCOUT_ONLY: boolean;
 }
+
+/* Options for filtering qr codes */
+type FilterOption =
+  | "match number"
+  | "team number"
+  | "day"
+  | "week"
+  | "month"
+  | "none";
+
+/* Options for sorting qr codes */
+type SortMode = "match number" | "recent" | "none";
+
+/*The direction to sort codes by */
+type SortDirection = "ascending" | "descending";

@@ -1,4 +1,5 @@
-import { Card, Grid, Typography, useTheme } from "@mui/material";
+import { Grid, Typography } from "@mui/material";
+import QrCard from "./QrCard";
 
 interface QrGridProps {
   validQrCodes: QrCode[];
@@ -7,57 +8,36 @@ interface QrGridProps {
   codeIsSelected: (c: QrCode) => boolean;
   onSelect: (c: QrCode) => void;
   onClickQr: (c: QrCode) => void;
+  toggleSelectMode?: () => void;
+  filter: FilterOption[];
+  sortMode: string;
+  sortDirection: string;
 }
 
-export default function QrGrid({
-  validQrCodes,
-  invalidQrCodes,
-  selecting,
-  codeIsSelected,
-  onSelect,
-  onClickQr,
-}: QrGridProps) {
-  const theme = useTheme();
-
-  const renderCard = (qr: QrCode, disabled = false) => (
-    <Card
-      elevation={disabled ? 1 : 2}
-      onClick={() =>
-        selecting && !disabled ? onSelect(qr) : !disabled && onClickQr(qr)
-      }
-      sx={{
-        p: 2,
-        borderRadius: 2,
-        cursor: disabled ? "default" : "pointer",
-        border: `1px solid ${
-          codeIsSelected(qr) && selecting
-            ? theme.palette.info.main
-            : theme.palette.divider
-        }`,
-        opacity: disabled ? 0.5 : 1,
-        transition: "all 0.2s ease",
-      }}
-    >
-      <img
-        src={`data:image/svg+xml,${encodeURIComponent(qr.image)}`}
-        alt="QR Code"
-        style={{
-          borderRadius: 8,
-          width: "100%",
-          aspectRatio: "1/1",
-          objectFit: "contain",
-        }}
-      />
-      <Typography>{qr.name}</Typography>
-    </Card>
-  );
+export default function QrGrid(props: QrGridProps) {
+  const {
+    validQrCodes,
+    invalidQrCodes,
+    selecting,
+    codeIsSelected,
+    onSelect,
+    onClickQr,
+    toggleSelectMode,
+  } = props;
 
   return (
     <>
       <Grid container spacing={2}>
         {validQrCodes.map((qr, i) => (
-          <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
-            {renderCard(qr)}
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={i}>
+            <QrCard
+              qr={qr}
+              selecting={selecting}
+              toggleSelectMode={toggleSelectMode}
+              onSelect={onSelect}
+              onClickQr={onClickQr}
+              codeIsSelected={codeIsSelected}
+            />
           </Grid>
         ))}
       </Grid>
@@ -73,7 +53,15 @@ export default function QrGrid({
           <Grid container spacing={2}>
             {invalidQrCodes.map((qr, i) => (
               <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
-                {renderCard(qr, true)}
+                <QrCard
+                  qr={qr}
+                  selecting={selecting}
+                  toggleSelectMode={toggleSelectMode}
+                  onSelect={onSelect}
+                  onClickQr={onClickQr}
+                  codeIsSelected={codeIsSelected}
+                  disabled
+                />
               </Grid>
             ))}
           </Grid>

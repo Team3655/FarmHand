@@ -97,6 +97,18 @@ const StoreManager = {
   async setLastSchema(name: string) {
     await this.set(StoreKeys.settings.LAST_SCHEMA_NAME, name);
   },
+
+  async archiveQrCode(name: string) {
+    await this.set(StoreKeys.code.archived(name), "true");
+  },
+
+  async unarchiveQrCode(name: string) {
+    await this.remove(StoreKeys.code.archived(name));
+  },
+  async isQrCodeArchived(name: string): Promise<boolean> {
+    const value = await this.get(StoreKeys.code.archived(name));
+    return value === "true";
+  },
 };
 
 export default StoreManager;
@@ -109,7 +121,9 @@ export const StoreKeys = {
     EXPECTED_DEVICES_COUNT: "settings::EXPECTED_DEVICES_COUNT",
     LEAD_SCOUT_ONLY: "settings::LEAD_SCOUT_ONLY",
   },
-
+  code: {
+    archived: (name: string) => `code::${name}::archived`,
+  },
   match: {
     field: (name: string) => `match::field::${name}`,
   },
