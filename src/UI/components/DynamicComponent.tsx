@@ -8,6 +8,7 @@ import CheckboxInput from "./CheckboxInput";
 import TextInput from "./TextInput";
 import { isFieldInvalid } from "../../utils/GeneralUtils";
 import { useAsyncFetch } from "../../hooks/useAsyncFetch";
+import GridInput from "./GridInput";
 import SliderInput from "./SliderInput";
 import NumberInput from "./NumberInput";
 import TimerInput from "./TimerInput";
@@ -82,6 +83,9 @@ export default function DynamicComponent(props: DynamicComponentProps) {
         break;
       case "timer":
         emptyStateValue = component.props?.default ?? "0.0";
+        break;
+      case "grid":
+        emptyStateValue = component.props?.default ?? '3x3[]';
         break;
       default:
         emptyStateValue = undefined;
@@ -226,6 +230,16 @@ export default function DynamicComponent(props: DynamicComponentProps) {
         );
       case "timer":
         return <TimerInput value={value} onChange={handleChange} />;
+      case "grid":
+        return (
+          <GridInput
+            value={value}
+            onChange={handleChange}
+            rows={component.props?.rows}
+            cols={component.props?.cols}
+            showCoordinates={component.props?.cellLabel === "coordinates"}
+          />
+        );
       case "filler":
         return;
       default:

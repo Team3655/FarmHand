@@ -50,7 +50,9 @@ export default function EditableComponentCard(props: ComponentCardProps) {
   const [rawDefaultValue, setRawDefaultValue] = useState("");
   const [dropdownError, setDropdownError] = useState<string | null>(null);
   const theme = useTheme();
-  const [defaultValueError, setDefaultValueError] = useState<string | null>(null);
+  const [defaultValueError, setDefaultValueError] = useState<string | null>(
+    null
+  );
 
   const isProtected =
     component.name === "Match Number" || component.name === "Team Number";
@@ -135,11 +137,15 @@ export default function EditableComponentCard(props: ComponentCardProps) {
         : [defaultValue, defaultValue];
       if (values.length === 2) {
         if (values[0] < minVal || values[1] > maxVal || values[0] > values[1]) {
-          error = `Range must be within ${min ?? "min"}-${max ?? "max"} and start <= end.`;
+          error = `Range must be within ${min ?? "min"}-${
+            max ?? "max"
+          } and start <= end.`;
         }
       }
     } else {
-      const value = Array.isArray(defaultValue) ? defaultValue[0] : defaultValue;
+      const value = Array.isArray(defaultValue)
+        ? defaultValue[0]
+        : defaultValue;
       if (typeof value === "number" && (value < minVal || value > maxVal)) {
         error = `Value must be within ${min ?? "min"}-${max ?? "max"}.`;
       }
@@ -370,6 +376,53 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             </Stack>
           </>
         );
+      case "grid":
+        return (
+          <>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Rows"
+                type="number"
+                value={editedComponent.props?.rows ?? ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "rows",
+                    parseInt(e.target.value) || undefined
+                  )
+                }
+                size="small"
+                fullWidth
+              />
+              <TextField
+                label="Columns"
+                type="number"
+                value={editedComponent.props?.cols ?? ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "cols",
+                    parseInt(e.target.value) || undefined
+                  )
+                }
+                size="small"
+                fullWidth
+              />
+            </Stack>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editedComponent.props?.cellLabel === "coordinates"}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "cellLabel",
+                      e.target.checked ? "coordinates" : undefined
+                    )
+                  }
+                />
+              }
+              label="Show Coordinates?"
+            />
+          </>
+        );
       default:
         return null;
     }
@@ -562,7 +615,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                 "Slider",
                 "Timer",
                 "Grid",
-                "Filler"
+                "Filler",
               ]}
             />
             <FormControlLabel

@@ -47,6 +47,9 @@ interface ComponentProps {
   options?: string[];
   step?: number;
   selectsRange?: boolean;
+  rows?: number;
+  cols?: number;
+  cellLabel?: string;
   onChange?: (value: any) => void;
 }
 
