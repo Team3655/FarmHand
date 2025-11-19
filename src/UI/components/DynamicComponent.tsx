@@ -10,6 +10,7 @@ import { isFieldInvalid } from "../../utils/GeneralUtils";
 import { useAsyncFetch } from "../../hooks/useAsyncFetch";
 import SliderInput from "./SliderInput";
 import NumberInput from "./NumberInput";
+import TimerInput from "./TimerInput";
 
 /* Props for the dynamic component
  */
@@ -78,6 +79,9 @@ export default function DynamicComponent(props: DynamicComponentProps) {
             emptyStateValue = component.props?.min ?? 0;
           }
         }
+        break;
+      case "timer":
+        emptyStateValue = component.props?.default ?? "0.0";
         break;
       default:
         emptyStateValue = undefined;
@@ -220,6 +224,8 @@ export default function DynamicComponent(props: DynamicComponentProps) {
             error={showError}
           />
         );
+      case "timer":
+        return <TimerInput value={value} onChange={handleChange} />;
       case "filler":
         return;
       default:
