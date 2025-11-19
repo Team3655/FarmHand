@@ -52,7 +52,7 @@ const Settings = React.lazy(() => import("./pages/Settings"));
 const Scout = React.lazy(() => import("./pages/Scout"));
 const QRPage = React.lazy(() => import("./pages/QR"));
 
-const CURRENT_VERSION: string = "0.1.0-beta.0";
+const CURRENT_VERSION: string = "0.1.0-beta";
 
 // TODO: make this actually get data somewhere
 const checkForUpdates = async (): Promise<{
@@ -61,7 +61,7 @@ const checkForUpdates = async (): Promise<{
 }> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const latestVersion: string = "0.1.0-beta.0"; // This would come from github releases or something
+      const latestVersion: string = "0.1.0-beta"; // This would come from github releases or something
       resolve({
         available: latestVersion !== CURRENT_VERSION,
         version: latestVersion,
