@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, ReactNode } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   SortableContext,
@@ -69,7 +69,7 @@ function DroppableSection({
 }: {
   section: SectionData;
   sectionIndex: number;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const { setNodeRef } = useDroppable({
     id: section.title,
@@ -617,7 +617,8 @@ export default function SchemaEditor() {
       return;
     }
 
-    dropPreviewRef.current = destination;  }
+    dropPreviewRef.current = destination;
+  }
 
   function resetDragState() {
     isDraggingRef.current = false;
