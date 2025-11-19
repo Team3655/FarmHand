@@ -19,11 +19,14 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
+import AddChartIcon from "@mui/icons-material/AddchartRounded";
 
-import QrShareDialog from "../ui/dialog/QrShareDialogue";
+import QrShareDialog from "../ui/dialog/QrShareDialog";
 import useDialog from "../hooks/useDialog";
 import { QrCodeBuilder, saveQrCode } from "../utils/QrUtils";
 import { getFieldValueByName } from "../utils/GeneralUtils";
+import PageHeader from "../ui/PageHeader";
+import { useSettings } from "../context/SettingsContext";
 
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
@@ -36,12 +39,28 @@ export default function Scout() {
     clearErrors,
     getMatchDataMap,
   } = useScoutData();
-
+  const {settings} = useSettings();
   const [resetKey, setResetKey] = useState<Key>(0);
   const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
   const [showResetPopup, openResetPopup, closeResetPopup] = useDialog();
   const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
   const qrCodeData = useRef<QrCode | null>(null);
+  const [expandedSectionIndex, setExpandedSectionIndex] = useState<
+    number | false
+  >(0);
+
+  const deviceID = settings.DEVICE_ID;
+
+  const handleSectionToggle = (panelIndex: number) => (isExpanded: boolean) => {
+    if (isExpanded) {
+      setExpandedSectionIndex(panelIndex);
+    } else {
+      // If the current panel is being closed, open the next one
+      const totalSections = schema!.sections.length;
+      const nextIndex = (panelIndex + 1) % totalSections;
+      setExpandedSectionIndex(nextIndex);
+    }
+  };
 
   const schemaData = schema;
 
@@ -74,7 +93,7 @@ export default function Scout() {
     const qr = await QrCodeBuilder.build.MATCH(schemaHash, minifiedJSON, [
       teamNumber!,
       matchNumber!,
-    ]);
+    ], deviceID);
     qrCodeData.current = qr;
     openQrPopup();
   };
@@ -101,15 +120,26 @@ export default function Scout() {
   }
   return (
     <>
-      <Box sx={{ p: 3, justifyContent: "center" }}>
-        <Typography variant="h3" sx={{ mb: 3 }}>
-          {schemaName}
-        </Typography>
+      <Box sx={{ p: 3 }}>
+        {/* Header */}
+        <PageHeader
+          icon={<AddChartIcon sx={{ fontSize: 28 }} />}
+          title={schemaName ?? "Scout Match"}
+          subtitle="Fill out the form to record match data"
+        />
+
         <Stack spacing={3} key={resetKey}>
           {schemaData!.sections.map((section, index) => (
-            <Section key={index} section={section} submitted={submitted} />
+            <Section
+              key={index}
+              section={section}
+              submitted={submitted}
+              expanded={expandedSectionIndex === index}
+              onToggle={handleSectionToggle(index)}
+            />
           ))}
         </Stack>
+
         <Stack
           direction={"row"}
           spacing={2}
@@ -118,21 +148,32 @@ export default function Scout() {
           sx={{ mt: 3 }}
         >
           <Button
-            variant="contained"
+            variant="outlined"
             color="warning"
-            sx={{ mt: 3 }}
+            size="large"
+            sx={{
+              borderRadius: 2,
+              borderWidth: 2,
+              "&:hover": {
+                borderWidth: 2,
+              },
+            }}
             onClick={openResetPopup}
+            startIcon={<ResetIcon />}
           >
-            <ResetIcon sx={{ mr: 1 }} />
             Reset form
           </Button>
           <Button
             variant="contained"
             color="primary"
-            sx={{ mt: 3 }}
+            size="large"
+            sx={{
+              borderRadius: 2,
+              px: 4,
+            }}
             onClick={handleSubmit}
+            startIcon={<QrCodeIcon />}
           >
-            <QrCodeIcon sx={{ mr: 1 }} />
             Complete scout
           </Button>
         </Stack>
@@ -142,23 +183,29 @@ export default function Scout() {
       <Dialog
         open={showResetPopup}
         onClose={closeResetPopup}
-        sx={{ elevation: 24 }}
+        slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
       >
         <DialogTitle
           sx={{
             display: "flex",
             alignItems: "center",
+            fontWeight: 600,
           }}
         >
           <HelpIcon sx={{ mr: 1 }} />
           Are you sure you want to reset the form?
         </DialogTitle>
-        <DialogActions>
-          <Button onClick={handleReset} color="error" variant="contained">
-            Reset
-          </Button>
-          <Button onClick={closeResetPopup} color="primary" variant="text">
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={closeResetPopup} sx={{ borderRadius: 2 }}>
             Cancel
+          </Button>
+          <Button
+            onClick={handleReset}
+            color="error"
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
+            Reset
           </Button>
         </DialogActions>
       </Dialog>
@@ -167,11 +214,12 @@ export default function Scout() {
       <Dialog
         open={showErrorPopup}
         onClose={closeErrorPopup}
-        sx={{
-          elevation: 24,
-          "& .MuiDialog-paper": {
-            backgroundColor: theme.palette.background.paper,
-            backgroundImage: "none",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              minWidth: 400,
+            },
           },
         }}
       >
@@ -180,18 +228,13 @@ export default function Scout() {
             display: "flex",
             alignItems: "center",
             color: theme.palette.error.main,
-            backgroundColor: theme.palette.background.paper,
+            fontWeight: 600,
           }}
         >
           <ErrorOutlineIcon sx={{ mr: 1 }} />
-          Errors
+          Form Errors
         </DialogTitle>
-        <DialogContent
-          sx={{
-            backgroundColor: theme.palette.background.paper,
-            borderColor: theme.palette.divider,
-          }}
-        >
+        <DialogContent>
           <DialogContentText
             variant="body1"
             sx={{
@@ -208,9 +251,9 @@ export default function Scout() {
                 key={index}
                 sx={{
                   p: 2,
-                  border: `1px solid ${theme.palette.error.main}`,
-                  borderRadius: 1,
-                  backgroundColor: theme.palette.background.paper,
+                  border: `2px solid ${theme.palette.error.main}`,
+                  borderRadius: 2,
+                  backgroundColor: `${theme.palette.error.main}10`,
                 }}
               >
                 <Typography
@@ -226,12 +269,12 @@ export default function Scout() {
             ))}
           </Stack>
         </DialogContent>
-        <DialogActions
-          sx={{
-            backgroundColor: theme.palette.background.paper,
-          }}
-        >
-          <Button onClick={closeErrorPopup} color="inherit">
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={closeErrorPopup}
+            variant="contained"
+            sx={{ borderRadius: 2 }}
+          >
             OK
           </Button>
         </DialogActions>
