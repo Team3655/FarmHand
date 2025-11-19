@@ -549,6 +549,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             </Stack>
             <Stack direction={"row"}>
               <IconButton
+                component="div"
                 onClick={(e) => {
                   e.stopPropagation();
                   setNewFieldName(editedComponent.name);
@@ -571,6 +572,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                 <EditIcon />
               </IconButton>
               <IconButton
+                component="div"
                 onClick={(e) => {
                   e.stopPropagation();
                   setItemToDelete(editedComponent);
