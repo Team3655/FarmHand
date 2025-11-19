@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   SortableContext,
@@ -6,14 +6,16 @@ import {
 } from "@dnd-kit/sortable";
 import {
   DndContext,
-  DragOverEvent,
   DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   useDroppable,
-  closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
+  closestCenter,
 } from "@dnd-kit/core";
 import {
   IconButton,
@@ -51,15 +53,30 @@ import RenameSectionDialog from "../ui/dialog/RenameSectionDialog";
 import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
 import { saveSchema } from "../utils/SchemaUtils";
 
+type DropTarget = {
+  sectionIndex: number;
+  fieldIndex: number;
+};
+
+type DragMeta =
+  | { type: "field"; sectionIndex: number; fieldIndex: number }
+  | { type: "section"; sectionIndex: number };
+
 function DroppableSection({
   section,
+  sectionIndex,
   children,
 }: {
   section: SectionData;
+  sectionIndex: number;
   children: React.ReactNode;
 }) {
   const { setNodeRef } = useDroppable({
     id: section.title,
+    data: {
+      type: "section",
+      sectionIndex,
+    },
   });
 
   return (
@@ -110,9 +127,22 @@ export default function SchemaEditor() {
   >(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
+  const isDraggingRef = useRef(false);
+  const lastUpdateRef = useRef<string>("");
+  const scrollPositionRef = useRef(0);
+  const dropPreviewRef = useRef<DropTarget | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 3 },
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 100,
+      },
     })
   );
 
@@ -405,92 +435,255 @@ export default function SchemaEditor() {
   };
 
   function handleDragStart(event: DragStartEvent) {
+    isDraggingRef.current = true;
+    scrollPositionRef.current = window.scrollY; // Save scroll position
     setActiveId(event.active.id);
   }
 
+  const findFieldLocation = (
+    schema: Schema,
+    fieldId: string | number
+  ): { sectionIndex: number; fieldIndex: number } | null => {
+    for (let i = 0; i < schema.sections.length; i++) {
+      const fieldIndex = schema.sections[i].fields.findIndex(
+        (f: Component) => f.id === fieldId
+      );
+      if (fieldIndex !== -1) {
+        return { sectionIndex: i, fieldIndex };
+      }
+    }
+    return null;
+  };
+
+  const determineDropTargetById = (
+    schema: Schema,
+    overId: string | number
+  ): DropTarget | null => {
+    const sectionIndex = schema.sections.findIndex(
+      (s: SectionData) => s.title === overId
+    );
+
+    if (sectionIndex !== -1) {
+      return {
+        sectionIndex,
+        fieldIndex: schema.sections[sectionIndex].fields.length,
+      };
+    }
+
+    for (let i = 0; i < schema.sections.length; i++) {
+      const fieldIndex = schema.sections[i].fields.findIndex(
+        (f: Component) => f.id === overId
+      );
+      if (fieldIndex !== -1) {
+        return { sectionIndex: i, fieldIndex };
+      }
+    }
+
+    return null;
+  };
+
+  const getDropTargetFromEvent = (
+    schema: Schema,
+    active: DragOverEvent["active"] | DragEndEvent["active"],
+    over: DragOverEvent["over"]
+  ): DropTarget | null => {
+    if (!over) return null;
+
+    const data = over.data?.current as DragMeta | undefined;
+    const sortableData = (over.data?.current as any)?.sortable as
+      | { containerId: string | number; index: number }
+      | undefined;
+
+    console.log("getDropTargetFromEvent: Over Data", data);
+    console.log("getDropTargetFromEvent: Sortable Data", sortableData);
+
+    if (sortableData) {
+      const sectionIndex =
+        data?.type === "field" && typeof data.sectionIndex === "number"
+          ? data.sectionIndex
+          : schema.sections.findIndex(
+              (s: SectionData) => s.title === sortableData.containerId
+            );
+
+      if (sectionIndex === -1 || sectionIndex === undefined) {
+        console.log("getDropTargetFromEvent: Section Index not found");
+        return determineDropTargetById(schema, over.id);
+      }
+
+      let fieldIndex =
+        typeof sortableData.index === "number"
+          ? sortableData.index
+          : data?.type === "field"
+          ? data.fieldIndex
+          : schema.sections[sectionIndex].fields.findIndex(
+              (f: Component) => f.id === over.id
+            );
+
+      if (fieldIndex < 0 || fieldIndex === undefined) {
+        console.log("getDropTargetFromEvent: Field Index not found");
+        fieldIndex = schema.sections[sectionIndex].fields.length;
+      }
+
+      const activeRect =
+        active.rect.current.translated ?? active.rect.current.initial;
+      const overRect = over.rect;
+
+      if (activeRect && overRect) {
+        const isBelowMidpoint =
+          activeRect.top + activeRect.height / 2 >
+          overRect.top + overRect.height / 2;
+        if (isBelowMidpoint) {
+          fieldIndex += 1;
+        }
+      }
+
+      const clampedIndex = Math.min(
+        Math.max(fieldIndex, 0),
+        schema.sections[sectionIndex].fields.length
+      );
+
+      console.log("getDropTargetFromEvent: Calculated Drop Target", {
+        sectionIndex,
+        fieldIndex: clampedIndex,
+      });
+
+      return {
+        sectionIndex,
+        fieldIndex: clampedIndex,
+      };
+    }
+
+    if (data?.type === "section") {
+      const section = schema.sections[data.sectionIndex];
+      if (!section) {
+        console.log("getDropTargetFromEvent: Section not found");
+        return null;
+      }
+      return {
+        sectionIndex: data.sectionIndex,
+        fieldIndex: section.fields.length,
+      };
+    }
+
+    console.log("getDropTargetFromEvent: No Sortable Data or Section Data");
+    return determineDropTargetById(schema, over.id);
+  };
+
+  const getSourceFromActive = (
+    schema: Schema,
+    active: DragEndEvent["active"] | DragOverEvent["active"]
+  ): DropTarget | null => {
+    const data = active.data?.current as DragMeta | undefined;
+    if (data?.type === "field") {
+      return {
+        sectionIndex: data.sectionIndex,
+        fieldIndex: data.fieldIndex,
+      };
+    }
+    return findFieldLocation(schema, active.id);
+  };
+
   function handleDragOver(event: DragOverEvent) {
+    if (!editingSchema) return;
     const { active, over } = event;
-    if (!over) return;
+    if (!active) {
+      console.log("handleDragOver: Active is null");
+      return;
+    }
 
-    const activeId = active.id;
-    const overId = over.id;
+    if (!over) {
+      console.log("handleDragOver: Over is null");
+      return;
+    }
 
-    if (activeId === overId) return;
+    const source = getSourceFromActive(editingSchema, active);
+    const destination = getDropTargetFromEvent(editingSchema, active, over);
+
+    console.log("handleDragOver: Source", source);
+    console.log("handleDragOver: Destination", destination);
+
+    if (!source || !destination) {
+      console.log("handleDragOver: Source or destination is null");
+      return;
+    }
+
+    const isSameSpot =
+      dropPreviewRef.current &&
+      dropPreviewRef.current.sectionIndex === destination.sectionIndex &&
+      dropPreviewRef.current.fieldIndex === destination.fieldIndex;
+
+    if (isSameSpot) {
+      console.log("handleDragOver: Same spot");
+      return;
+    }
+
+    dropPreviewRef.current = destination;  }
+
+  function resetDragState() {
+    isDraggingRef.current = false;
+    lastUpdateRef.current = "";
+    setActiveId(null);
+    dropPreviewRef.current = null;
+  }
+
+  function handleDragEnd(event?: DragEndEvent) {
+    const storedScrollY = scrollPositionRef.current;
+    resetDragState();
+
+    // Restore scroll position after a short delay to let React finish rendering
+    requestAnimationFrame(() => {
+      window.scrollTo(0, storedScrollY);
+    });
+
+    if (!event || !editingSchema) return;
+
+    const { active, over } = event;
+    if (!active || !over) return;
 
     setEditingSchema((prev) => {
-      if (!prev) return null;
+      if (!prev) return prev;
 
-      let activeSectionIndex = -1;
-      let activeFieldIndex = -1;
+      const source = getSourceFromActive(prev, active);
+      const destination = getDropTargetFromEvent(prev, active, over);
 
-      for (let i = 0; i < prev.sections.length; i++) {
-        const fieldIndex = prev.sections[i].fields.findIndex(
-          (f: Component) => f.id === activeId
-        );
-        if (fieldIndex !== -1) {
-          activeSectionIndex = i;
-          activeFieldIndex = fieldIndex;
-          break;
-        }
-      }
+      if (!source || !destination) return prev;
 
-      if (activeSectionIndex === -1) return prev;
+      const movingWithinSamePosition =
+        source.sectionIndex === destination.sectionIndex &&
+        source.fieldIndex === destination.fieldIndex;
 
-      let overSectionIndex = -1;
-      let overFieldIndex = -1;
+      if (movingWithinSamePosition) return prev;
 
-      const overSection = prev.sections.find(
-        (s: SectionData) => s.title === overId
+      const newSections = prev.sections.map((section: SectionData) => ({
+        ...section,
+        fields: [...section.fields],
+      }));
+
+      const [movedField] = newSections[source.sectionIndex].fields.splice(
+        source.fieldIndex,
+        1
       );
-      if (overSection) {
-        overSectionIndex = prev.sections.indexOf(overSection);
-        overFieldIndex = overSection.fields.length;
-      } else {
-        for (let i = 0; i < prev.sections.length; i++) {
-          const fieldIndex = prev.sections[i].fields.findIndex(
-            (f: Component) => f.id === overId
-          );
-          if (fieldIndex !== -1) {
-            overSectionIndex = i;
-            overFieldIndex = fieldIndex;
-            break;
-          }
-        }
+
+      if (!movedField) return prev;
+
+      const targetFields = newSections[destination.sectionIndex].fields;
+
+      let insertIndex = destination.fieldIndex;
+      if (
+        source.sectionIndex === destination.sectionIndex &&
+        source.fieldIndex < destination.fieldIndex
+      ) {
+        insertIndex = Math.max(destination.fieldIndex - 1, 0);
       }
 
-      if (overSectionIndex === -1) return prev;
-
-      const newSections = [...prev.sections];
-
-      if (activeSectionIndex === overSectionIndex) {
-        if (activeFieldIndex === overFieldIndex) return prev;
-
-        const fields = [...newSections[activeSectionIndex].fields];
-        const [movedItem] = fields.splice(activeFieldIndex, 1);
-        fields.splice(overFieldIndex, 0, movedItem);
-
-        newSections[activeSectionIndex] = {
-          ...newSections[activeSectionIndex],
-          fields,
-        };
-      } else {
-        const [movedItem] = newSections[activeSectionIndex].fields.splice(
-          activeFieldIndex,
-          1
-        );
-        newSections[overSectionIndex].fields.splice(
-          overFieldIndex,
-          0,
-          movedItem
-        );
-      }
+      targetFields.splice(insertIndex, 0, movedField);
 
       return { ...prev, sections: newSections };
     });
   }
 
-  function handleDragEnd() {
-    setActiveId(null);
+  function handleDragCancel() {
+    resetDragState();
   }
 
   if (!editingSchema) {
@@ -517,6 +710,7 @@ export default function SchemaEditor() {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
+      onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}
       collisionDetection={closestCenter}
     >
@@ -614,7 +808,11 @@ export default function SchemaEditor() {
               );
 
               return (
-                <DroppableSection key={section.title} section={section}>
+                <DroppableSection
+                  key={section.title}
+                  section={section}
+                  sectionIndex={originalIndex}
+                >
                   <SortableContext
                     id={section.title}
                     items={section.fields.map((f: Component) => f.id)}
