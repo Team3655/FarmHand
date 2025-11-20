@@ -39,6 +39,7 @@ import {
 import { TractorTheme } from "./config/themes/TractorTheme";
 import { ThemeNotFound } from "./config/themes/404ThemeNotFound";
 import {ThunderTheme} from './config/themes/ThunderTheme';
+import {MuttonTheme} from './config/themes/MuttonTheme'
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import SchemaProvider from "./context/SchemaContext";
 import Schemas from "./pages/Schemas";
@@ -52,6 +53,7 @@ const themes = {
   TractorTheme: TractorTheme,
   ThemeNotFound: ThemeNotFound,
   ThunderTheme: ThunderTheme,
+  MuttonTheme: MuttonTheme
 };
 
 const Home = React.lazy(() => import("./pages/Home"));

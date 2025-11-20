@@ -74,7 +74,7 @@ export default function Settings() {
           label: "Color Theme",
           description: "Select the color palette for the app",
           value: settings.COLOR_THEME || "TractorTheme",
-          options: ["TractorTheme", "ThemeNotFound", "ThunderTheme"],
+          options: ["TractorTheme", "ThemeNotFound", "ThunderTheme", "MuttonTheme"],
           onChange: (value: string) => handleChange("COLOR_THEME", value),
         },
         {
