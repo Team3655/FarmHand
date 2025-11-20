@@ -38,6 +38,7 @@ import {
 } from "react-router";
 import { TractorTheme } from "./config/themes/TractorTheme";
 import { ThemeNotFound } from "./config/themes/404ThemeNotFound";
+import {ThunderTheme} from './config/themes/ThunderTheme';
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import SchemaProvider from "./context/SchemaContext";
 import Schemas from "./pages/Schemas";
@@ -48,8 +49,9 @@ import { useSettings } from "./context/SettingsContext";
 import Archive from "./pages/Archive";
 
 const themes = {
-  Tractor: TractorTheme,
+  TractorTheme: TractorTheme,
   ThemeNotFound: ThemeNotFound,
+  ThunderTheme: ThunderTheme,
 };
 
 const Home = React.lazy(() => import("./pages/Home"));
@@ -377,7 +379,7 @@ export default function App() {
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
   const themeName = (settings.COLOR_THEME as keyof typeof themes) || "Tractor";
-  const selectedThemeContainer = themes[themeName] || themes.Tractor;
+  const selectedThemeContainer = themes[themeName] || themes.TractorTheme;
 
   const theme =
     settings.THEME === "dark"

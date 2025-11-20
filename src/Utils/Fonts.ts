@@ -3,6 +3,8 @@ import Anton from "../assets/fonts/Anton-Regular.ttf";
 import Antonio from "../assets/fonts/Antonio-VariableFont_wght.ttf";
 import Nasalization from '../assets/fonts/Nasalization_Rg.otf'
 import Fredoka from '../assets/fonts/Fredoka.ttf';
+import Voltec from '../assets/fonts/Voltec.ttf';
+import Goldman from '../assets/fonts/Goldman-Regular.ttf'
 
 export const anton = {
   fontFamily: "Anton",
@@ -51,5 +53,25 @@ export const fredoka = {
   src: `
     local('Fredoka'),
     url(${Fredoka}) 
+  `,
+}
+
+export const voltec = {
+  fontFamily: "Voltec",
+  fontStyle: "normal",
+  fontDisplay: "swap",
+  src: `
+    local('Voltec'),
+    url(${Voltec}) 
+  `,
+}
+
+export const goldman = {
+  fontFamily: "Goldman",
+  fontStyle: "normal",
+  fontDisplay: "swap",
+  src: `
+    local('Goldman'),
+    url(${Goldman}) 
   `,
 }
