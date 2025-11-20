@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import DropdownInput from "../ui/components/DropdownInput";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
-import SchemaIcon from "@mui/icons-material/DescriptionRounded";
+import SchemaIcon from "@mui/icons-material/SchemaRounded";
 import PaletteIcon from "@mui/icons-material/PaletteRounded";
 import StorageIcon from "@mui/icons-material/StorageRounded";
 import NotificationsIcon from "@mui/icons-material/NotificationsRounded";
@@ -23,11 +23,13 @@ import InfoIcon from "@mui/icons-material/InfoRounded";
 import { useState } from "react";
 import PageHeader from "../ui/PageHeader";
 import { useSettings } from "../context/SettingsContext";
+import { useNavigate } from "react-router";
 
 export default function Settings() {
   const { schemaName, availableSchemas } = useSchema();
   const { setSetting, settings } = useSettings();
   const theme = useTheme();
+  const navigate = useNavigate();
 
   // TODO: Make these actually function
   const [notifications, setNotifications] = useState(true);
@@ -74,7 +76,12 @@ export default function Settings() {
           label: "Color Theme",
           description: "Select the color palette for the app",
           value: settings.COLOR_THEME || "TractorTheme",
-          options: ["TractorTheme", "ThemeNotFound", "ThunderTheme", "MuttonTheme"],
+          options: [
+            "TractorTheme",
+            "ThemeNotFound",
+            "ThunderTheme",
+            "MuttonTheme",
+          ],
           onChange: (value: string) => handleChange("COLOR_THEME", value),
         },
         {
@@ -210,7 +217,7 @@ export default function Settings() {
             value={setting.value}
             onChange={(e) => setting.onChange(e.target.value)}
             onBlur={setting.onBlur}
-            inputProps={setting.inputProps}
+            slotProps={{ htmlInput: setting.inputProps }}
             size="small"
             sx={{ minWidth: 100 }}
           />
@@ -322,6 +329,28 @@ export default function Settings() {
                 )}
               </Stack>
             </CardContent>
+            {section.id === "scouting" && (
+              <>
+                <Divider />
+                <Box sx={{ p: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => navigate("/schemas")}
+                    startIcon={<SchemaIcon />}
+                    sx={{
+                      borderRadius: 2,
+                      py: 1.5,
+                      borderWidth: 2,
+                      "&:hover": { borderWidth: 2 },
+                    }}
+                  >
+                    Open Schema Editor
+                  </Button>
+                </Box>
+              </>
+            )}
           </Card>
         ))}
 

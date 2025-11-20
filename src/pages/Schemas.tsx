@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router";
 import AddIcon from "@mui/icons-material/AddRounded";
+import ArrowBackIcon from "@mui/icons-material/ArrowBackRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import SchemaIcon from "@mui/icons-material/SchemaRounded";
@@ -158,6 +159,16 @@ export default function Schemas() {
         icon={<SchemaIcon sx={{ fontSize: 28 }} />}
         title="Schemas"
         subtitle="Manage scouting form layouts"
+        leadingComponent={
+          <IconButton
+            onClick={() => navigate("/settings")}
+            sx={{
+              color: theme.palette.primary.main,
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+        }
       />
 
       {/* Schema List */}

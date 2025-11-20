@@ -25,7 +25,6 @@ import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import DashboardIcon from "@mui/icons-material/DashboardRounded";
-import SchemaIcon from "@mui/icons-material/SchemaRounded";
 import UpdateIcon from "@mui/icons-material/SystemUpdateRounded";
 import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
 import React, { Suspense, useEffect, useState } from "react";
@@ -38,8 +37,8 @@ import {
 } from "react-router";
 import { TractorTheme } from "./config/themes/TractorTheme";
 import { ThemeNotFound } from "./config/themes/404ThemeNotFound";
-import {ThunderTheme} from './config/themes/ThunderTheme';
-import {MuttonTheme} from './config/themes/MuttonTheme'
+import { ThunderTheme } from "./config/themes/ThunderTheme";
+import { MuttonTheme } from "./config/themes/MuttonTheme";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import SchemaProvider from "./context/SchemaContext";
 import Schemas from "./pages/Schemas";
@@ -53,7 +52,7 @@ const themes = {
   TractorTheme: TractorTheme,
   ThemeNotFound: ThemeNotFound,
   ThunderTheme: ThunderTheme,
-  MuttonTheme: MuttonTheme
+  MuttonTheme: MuttonTheme,
 };
 
 const Home = React.lazy(() => import("./pages/Home"));
@@ -90,11 +89,6 @@ const pages = [
     title: "QR Codes",
     icon: <QrCodeIcon />,
     path: "/qr",
-  },
-  {
-    title: "Schemas",
-    icon: <SchemaIcon />,
-    path: "/schemas",
   },
   {
     title: "Lead Scouter Dashboard",
