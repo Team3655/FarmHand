@@ -1,5 +1,5 @@
 import { createTheme } from "@mui/material/styles";
-import {  goldman, voltec } from "../../utils/Fonts";
+import { goldman, voltec } from "../../utils/Fonts";
 
 export const ThunderTheme = {
   light: createTheme({
@@ -7,8 +7,8 @@ export const ThunderTheme = {
       mode: "light",
       primary: {
         main: "#ff0000",
-        dark: "#FF3333",
-        light: "#B20000",
+        dark: "#B20000",
+        light: "#FF3333",
         contrastText: "#ffffff",
       },
       secondary: {
@@ -110,8 +110,8 @@ export const ThunderTheme = {
       mode: "dark",
       primary: {
         main: "#ff0000",
-        dark: "#FF3333",
-        light: "#B20000",
+        dark: "#B20000",
+        light: "#FF3333",
         contrastText: "#ffffff",
       },
       secondary: {
