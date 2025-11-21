@@ -40,7 +40,14 @@ export default function ArchivePage() {
     () => allQrCodes?.filter((code) => code.archived) || [],
     [allQrCodes]
   );
-  
+
+  const handleResetSelection = () => {
+    qrManager.resetSelection();
+    if (qrManager.selecting) {
+      qrManager.toggleSelectionMode();
+    }
+  };
+
   const qrManager = useQrManager({ qrCodes: archivedQrCodes });
 
   const handleMassUnarchive = async () => {
@@ -168,6 +175,7 @@ export default function ArchivePage() {
             </Stack>
 
             <QrGrid
+              resetSelection={handleResetSelection}
               validQrCodes={qrManager.filteredQrCodes}
               invalidQrCodes={[]}
               selecting={qrManager.selecting}
@@ -281,7 +289,7 @@ export default function ArchivePage() {
         </DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to permanently delete{" "}
+            Are you sure you want to permanently delete
             {qrManager.selectedCodes.length} code
             {qrManager.selectedCodes.length !== 1 ? "s" : ""}? This action
             cannot be undone.

@@ -1,5 +1,6 @@
 import { Card, Stack, Typography, useTheme } from "@mui/material";
 import useLongPress from "../../hooks/useLongPress";
+import { useRef } from "react";
 import { getDataFromQrName } from "../../utils/QrUtils";
 
 interface QrCardProps {
@@ -16,36 +17,38 @@ export default function QrCard(props: QrCardProps) {
   const { qr, disabled, selecting, toggleSelectMode, onSelect, onClickQr, codeIsSelected } =
     props;
   const theme = useTheme();
+  const longPressTriggered = useRef(false);
 
-  const handleTouchLongPress = (e: TouchEvent) => {
+  const handleLongPress = (e: TouchEvent | MouseEvent) => {
     e.preventDefault();
     if (toggleSelectMode && !disabled) {
-      toggleSelectMode();
+      longPressTriggered.current = true;
+      if (!selecting) {
+        toggleSelectMode();
+      }
       onSelect(qr);
     }
   };
 
-  const handleMouseLongPress = (e: MouseEvent) => {
-    e.preventDefault();
-    if (toggleSelectMode && !disabled) {
-      toggleSelectMode();
-      onSelect(qr);
+  const handleClick = () => {
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      return;
     }
+    selecting && !disabled ? onSelect(qr) : !disabled && onClickQr(qr);
   };
 
   const onLongPress = useLongPress(
     500,
-    handleTouchLongPress,
-    handleMouseLongPress
+    handleLongPress as (e: TouchEvent) => void,
+    handleLongPress as (e: MouseEvent) => void
   );
 
   return (
     <Card
       {...onLongPress}
       elevation={disabled ? 1 : 2}
-      onClick={() =>
-        selecting && !disabled ? onSelect(qr) : !disabled && onClickQr(qr)
-      }
+      onClick={handleClick}
       sx={{
         p: 2,
         borderRadius: 2,
