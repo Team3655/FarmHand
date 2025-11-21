@@ -40,14 +40,7 @@ export default function ArchivePage() {
     () => allQrCodes?.filter((code) => code.archived) || [],
     [allQrCodes]
   );
-
-  const handleResetSelection = () => {
-    qrManager.resetSelection();
-    if (qrManager.selecting) {
-      qrManager.toggleSelectionMode();
-    }
-  };
-
+  
   const qrManager = useQrManager({ qrCodes: archivedQrCodes });
 
   const handleMassUnarchive = async () => {
@@ -175,7 +168,6 @@ export default function ArchivePage() {
             </Stack>
 
             <QrGrid
-              resetSelection={handleResetSelection}
               validQrCodes={qrManager.filteredQrCodes}
               invalidQrCodes={[]}
               selecting={qrManager.selecting}

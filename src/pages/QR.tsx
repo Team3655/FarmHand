@@ -74,13 +74,6 @@ export default function QRPage() {
     refetch();
   };
 
-  const handleResetSelection = () => {
-    qrManager.resetSelection();
-    if (qrManager.selecting) {
-      qrManager.toggleSelectionMode();
-    }
-  };
-
   if (loading) return <Typography>Loading...</Typography>;
   if (error)
     return <Typography color="error">Error fetching QR codes</Typography>;
@@ -221,7 +214,6 @@ export default function QRPage() {
               filter={qrManager.filters}
               sortMode={qrManager.sortMode}
               sortDirection={qrManager.sortDirection}
-              resetSelection={handleResetSelection}
             />
           </Box>
         </>
