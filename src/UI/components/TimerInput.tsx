@@ -1,14 +1,13 @@
 import { Button, Stack, Typography } from "@mui/material";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
-import PauseIcon from '@mui/icons-material/PauseRounded';
+import PauseIcon from "@mui/icons-material/PauseRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import useToggle from "../../hooks/useToggle";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Props for the timer input
  */
-
 interface TimerInputProps {
   value?: string;
   onChange?: (value: string) => void;
@@ -37,6 +36,12 @@ export default function TimerInput(props: TimerInputProps) {
   const requestRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pauseTimeRef = useRef(initialTimeInTenths * 100);
+  const onChangeRef = useRef(onChange);
+
+  // Keep onChange ref up to date
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!playing) {
@@ -46,29 +51,51 @@ export default function TimerInput(props: TimerInputProps) {
     }
   }, [initialValueString, playing]);
 
-  const animate = useCallback(() => {
-    const elapsed = Date.now() - startTimeRef.current;
-    setLocalTime(Math.floor(elapsed / 100));
-    requestRef.current = requestAnimationFrame(animate);
-  }, []);
-
   useEffect(() => {
-    if (playing) {
-      startTimeRef.current = Date.now() - pauseTimeRef.current;
-      requestRef.current = requestAnimationFrame(animate);
+    if (!playing) {
+      // Cancel any ongoing animation when stopped
+      if (requestRef.current !== null) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
+      }
+      return;
     }
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      requestRef.current = null;
+
+    // Set the start time based on where we paused
+    startTimeRef.current = Date.now() - pauseTimeRef.current;
+
+    // Define animate function inside the effect
+    const animate = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const newTime = Math.floor(elapsed / 100);
+      setLocalTime(newTime);
+
+      // Continue animation
+      requestRef.current = requestAnimationFrame(animate);
     };
-  }, [playing, animate]);
+
+    // Start the animation
+    requestRef.current = requestAnimationFrame(animate);
+
+    // Cleanup function
+    return () => {
+      if (requestRef.current !== null) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
+      }
+    };
+  }, [playing]); // Only depend on 'playing'
 
   const handlePlayPause = () => {
     if (playing) {
-      if (requestRef.current) {
-        const finalTimeMs = Date.now() - startTimeRef.current;
-        pauseTimeRef.current = finalTimeMs;
-        onChange?.(formatTime(Math.floor(finalTimeMs / 100)));
+      // Calculate final time when pausing
+      const finalTimeMs = Date.now() - startTimeRef.current;
+      pauseTimeRef.current = finalTimeMs;
+      const finalTimeInTenths = Math.floor(finalTimeMs / 100);
+
+      // Call onChange with the final value
+      if (onChangeRef.current) {
+        onChangeRef.current(formatTime(finalTimeInTenths));
       }
     }
     togglePlaying();
@@ -89,31 +116,35 @@ export default function TimerInput(props: TimerInputProps) {
     if (playing) togglePlaying();
     setLocalTime(0);
     pauseTimeRef.current = 0;
-    onChange?.(formatTime(0));
+    if (onChangeRef.current) {
+      onChangeRef.current(formatTime(0));
+    }
   };
 
   return (
     <Stack direction={"column"} spacing={2} alignItems={"center"}>
-      <Typography
-        variant="h3" sx={{ minWidth: "180px", textAlign: "center" }}
-      >
+      <Typography variant="h3" sx={{ minWidth: "180px", textAlign: "center" }}>
         {formatTime(localTime)}
       </Typography>
       <Stack direction={"row"} spacing={2}>
         {playing ? (
-          <Button variant="outlined" color="secondary" onClick={handlePlayPause}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handlePlayPause}
+          >
             <PauseIcon />
           </Button>
         ) : (
-          <Button variant="outlined" color="secondary" onClick={handlePlayPause}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handlePlayPause}
+          >
             <PlayIcon />
           </Button>
         )}
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleReset}
-        >
+        <Button variant="outlined" color="secondary" onClick={handleReset}>
           <ResetIcon />
         </Button>
       </Stack>
