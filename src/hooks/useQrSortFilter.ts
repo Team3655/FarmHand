@@ -25,18 +25,25 @@ export function useQrSortFilter({
   const processedQrCodes = useMemo(() => {
     let filtered = qrCodes.filter((code) => {
       const data = getDataFromQrName(code.name);
+
       if (filters.includes("match number") && matchNumberFilter) {
-        return data.MatchNumber.includes(matchNumberFilter);
-      }
-      if (filters.includes("team number") && teamNumberFilter) {
-        return data.TeamNumber.includes(teamNumberFilter);
+        if (!data.MatchNumber.includes(matchNumberFilter)) {
+          return false;
+        }
       }
 
-      if (
+      if (filters.includes("team number") && teamNumberFilter) {
+        if (!data.TeamNumber.includes(teamNumberFilter)) {
+          return false;
+        }
+      }
+
+      const hasDateFilter =
         filters.includes("day") ||
         filters.includes("week") ||
-        filters.includes("month")
-      ) {
+        filters.includes("month");
+
+      if (hasDateFilter) {
         const codeDate = new Date(parseInt(data.Timestamp) * 1000);
         const now = new Date();
 
