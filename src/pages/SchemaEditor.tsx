@@ -33,6 +33,10 @@ import {
   Slide,
   Snackbar,
   useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import EditableComponentCard from "../ui/EditableComponentCard";
 import PageHeader from "../ui/PageHeader";
@@ -95,6 +99,8 @@ export default function SchemaEditor() {
     useDialog();
   const [renameDialogOpen, openRenameDialog, closeRenameDialog] = useDialog();
   const [shareDialogOpen, openShareDialog, closeShareDialog] = useDialog();
+  const [warningDialogOpen, openWarningDialog, closeWarningDialog] =
+    useDialog();
   const [
     deleteSectionDialogOpen,
     openDeleteSectionDialog,
@@ -655,7 +661,7 @@ export default function SchemaEditor() {
                     <Button
                       variant="contained"
                       color="primary"
-                      onClick={handleSaveSchema}
+                      onClick={openWarningDialog}
                       startIcon={<SaveIcon />}
                       size="large"
                       disabled={!isSchemaSaveable}
@@ -989,6 +995,30 @@ export default function SchemaEditor() {
           schema={editingSchema}
         />
       )}
+
+      <Dialog open={warningDialogOpen}>
+        <DialogTitle>
+          <WarningIcon /> Warning
+        </DialogTitle>
+        <DialogContent>
+          Changing a schema could result in inaccurate data for the rest of your
+          team. If you are actively using this schema, make sure to share it
+          with ALL other devices being used. If you are not your teams lead
+          scouter, check with them before making any changes.
+        </DialogContent>
+        <DialogActions>
+          <Button variant="text" color="primary" onClick={closeWarningDialog}>
+            Cancel
+          </Button>{" "}
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleSaveSchema}
+          >
+            Continue Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
