@@ -40,8 +40,7 @@ export default function ArchivePage() {
     () => allQrCodes?.filter((code) => code.archived) || [],
     [allQrCodes]
   );
-
-  // Use the combined hook - same as QR page!
+  
   const qrManager = useQrManager({ qrCodes: archivedQrCodes });
 
   const handleMassUnarchive = async () => {
@@ -169,8 +168,8 @@ export default function ArchivePage() {
             </Stack>
 
             <QrGrid
-              validQrCodes={qrManager.validQrCodes}
-              invalidQrCodes={qrManager.invalidQrCodes}
+              validQrCodes={qrManager.filteredQrCodes}
+              invalidQrCodes={[]}
               selecting={qrManager.selecting}
               codeIsSelected={qrManager.codeIsSelected}
               onSelect={qrManager.updateSelectedCodes}
@@ -282,7 +281,7 @@ export default function ArchivePage() {
         </DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to permanently delete{" "}
+            Are you sure you want to permanently delete
             {qrManager.selectedCodes.length} code
             {qrManager.selectedCodes.length !== 1 ? "s" : ""}? This action
             cannot be undone.
