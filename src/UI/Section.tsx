@@ -117,10 +117,10 @@ export default function Section(props: SectionProps) {
           {section.fields.map((component, index) => (
             <Grid
               size={{
-                xs: component.doubleWidth ? 12 : 6,
-                sm: component.doubleWidth ? 8 : 4,
+                xs: component.doubleWidth ? 12 : 12,
+                sm: component.doubleWidth ? 12 : 6,
                 md: component.doubleWidth ? 6 : 3,
-                lg: component.doubleWidth ? 4 : 2,
+                lg: component.doubleWidth ? 4 : 4,
               }}
               key={index}
             >
