@@ -112,7 +112,7 @@ export default function Home() {
             variant="contained"
             color="info"
             startIcon={<HelpIcon />}
-            onClick={() => {}}
+            onClick={() => {navigate('/help')}}
             sx={{
               borderRadius: 2,
               px: 3,

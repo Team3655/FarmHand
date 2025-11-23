@@ -21,6 +21,7 @@ import {
 import useDrawer from "./hooks/useDrawer";
 import MenuIcon from "@mui/icons-material/MenuRounded";
 import HomeIcon from "@mui/icons-material/HomeRounded";
+import HelpIcon from "@mui/icons-material/HelpRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
@@ -47,6 +48,7 @@ import LeadScoutDashboard from "./pages/Dashboard";
 import ScoutDataProvider from "./context/ScoutDataContext";
 import { useSettings } from "./context/SettingsContext";
 import Archive from "./pages/Archive";
+import Help from "./pages/Help";
 
 const themes = {
   TractorTheme: TractorTheme,
@@ -104,6 +106,11 @@ const pages = [
     title: "Settings",
     icon: <SettingsIcon />,
     path: "/settings",
+  },
+  {
+    title: "Help",
+    icon: <HelpIcon />,
+    path: "/help",
   },
 ];
 
@@ -287,7 +294,12 @@ function Layout({ children }: { children: React.ReactNode }) {
           {/* Navigation Items */}
           <List sx={{ flexGrow: 1, pt: 2 }}>
             {pages
-              .filter((item) => item.title !== "Settings")
+              .filter(
+                (item) =>
+                  item.title !== "Settings" &&
+                  item.title !== "Archive" &&
+                  item.title !== "Help"
+              )
               .map((item) => (
                 <ListItem key={item.title} disablePadding sx={{ mb: 0.5 }}>
                   <ListItemButton
@@ -321,36 +333,40 @@ function Layout({ children }: { children: React.ReactNode }) {
           <Box>
             <Divider sx={{ mb: 1 }} />
             <List>
-              <ListItem disablePadding>
-                <ListItemButton
-                  onClick={() => navigate("/settings")}
-                  selected={location.pathname === "/settings"}
-                  sx={{
-                    ...selectedItemSx,
-                    borderRadius: 2,
-                    mx: 1,
-                    mb: 1,
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 40,
-                      borderRadius: 2,
-                      borderTopLeftRadius: 0,
-                      borderBottomLeftRadius: 0,
-                      mx: 1,
-                    }}
-                  >
-                    <SettingsIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography variant="subtitle1">Settings</Typography>
-                    }
-                  />
-                </ListItemButton>
-              </ListItem>
+              {pages
+                .filter(
+                  (item) =>
+                    item.title === "Settings" ||
+                    item.title === "Archive" ||
+                    item.title === "Help"
+                )
+                .map((item) => (
+                  <ListItem key={item.title} disablePadding sx={{ mb: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => navigate(item.path)}
+                      selected={isPathSelected(item.path)}
+                      sx={{
+                        ...selectedItemSx,
+                        borderRadius: 2,
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        mx: 1,
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        disableTypography
+                        primary={
+                          <Typography variant="subtitle1">
+                            {item.title}
+                          </Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
             </List>
           </Box>
         </Box>
@@ -449,6 +465,7 @@ export default function App() {
                   <Route path="/dashboard" element={<LeadScoutDashboard />} />
                   <Route path="/archive" element={<Archive />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/help" element={<Help />} />
                 </Routes>
               </Suspense>
             </Layout>
