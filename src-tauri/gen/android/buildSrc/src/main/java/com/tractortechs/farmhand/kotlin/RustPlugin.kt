@@ -17,13 +17,13 @@ open class RustPlugin : Plugin<Project> {
     override fun apply(project: Project) = with(project) {
         config = extensions.create("rust", Config::class.java)
 
-        val defaultAbiList = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64");
+        val defaultAbiList = listOf("arm64-v8a");
         val abiList = (findProperty("abiList") as? String)?.split(',') ?: defaultAbiList
 
-        val defaultArchList = listOf("arm64", "arm", "x86", "x86_64");
+        val defaultArchList = listOf("arm64");
         val archList = (findProperty("archList") as? String)?.split(',') ?: defaultArchList
 
-        val targetsList = (findProperty("targetList") as? String)?.split(',') ?: listOf("aarch64", "armv7", "i686", "x86_64")
+        val targetsList = (findProperty("targetList") as? String)?.split(',') ?: listOf("aarch64")
 
         extensions.configure<ApplicationExtension> {
             @Suppress("UnstableApiUsage")
@@ -75,9 +75,11 @@ open class RustPlugin : Plugin<Project> {
                     }
 
                     buildTask.dependsOn(targetBuildTask)
-                    tasks["merge$targetArchCapitalized${profileCapitalized}JniLibFolders"].dependsOn(
-                        targetBuildTask
-                    )
+                    val mergeTaskName = "merge$targetArchCapitalized${profileCapitalized}JniLibFolders"
+                    val mergeTask = tasks.findByName(mergeTaskName)
+                    if (mergeTask != null) {
+                        mergeTask.dependsOn(targetBuildTask)
+                    }
                 }
             }
         }
