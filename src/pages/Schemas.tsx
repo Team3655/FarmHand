@@ -10,25 +10,37 @@ import {
   CardContent,
   Paper,
   Chip,
+  Snackbar,
+  Slide,
 } from "@mui/material";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import AddIcon from "@mui/icons-material/AddRounded";
+import ArrowBackIcon from "@mui/icons-material/ArrowBackRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import SchemaIcon from "@mui/icons-material/SchemaRounded";
+import ShareIcon from "@mui/icons-material/ShareRounded";
+import CloseIcon from "@mui/icons-material/CloseRounded";
 import useDialog from "../hooks/useDialog";
 import { useSchema } from "../context/SchemaContext";
 import { deleteSchema, saveSchema } from "../utils/SchemaUtils";
 import PageHeader from "../ui/PageHeader";
-import CreateSchemaDialog from "../ui/dialog/CreateSchemaDialog";
-import RenameSchemaDialog from "../ui/dialog/RenameSchemaDialog";
-import DeleteSchemaDialog from "../ui/dialog/DeleteSchemaDialog";
+import CreateDialog from "../ui/dialog/CreateDialog";
+import RenameDialog from "../ui/dialog/RenameDialog";
+import DeleteDialog from "../ui/dialog/DeleteDialog";
 import DuplicateNameDialog from "../ui/dialog/DuplicateNameDialog";
+import ShareDialog from "../ui/dialog/ShareDialog";
 
 export default function Schemas() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showWarning } = location.state || {};
+
   const { availableSchemas, refreshSchemas } = useSchema();
+  const [shareDialogOpen, openShareDialog, closeShareDialog] = useDialog();
+  const [schemaToShare, setSchemaToShare] = useState<Schema | null>(null);
+  const [warningOpen, , closeWarning] = useDialog(showWarning || false);
 
   const [newSchemaDialogOpen, openNewSchemaDialog, closeNewSchemaDialog] =
     useDialog();
@@ -84,14 +96,14 @@ export default function Schemas() {
               name: "Match Number",
               type: "number",
               required: true,
-              props: {},
+              props: { min: 1, max: 100 },
             },
             {
               id: 2,
               name: "Team Number",
               type: "number",
               required: true,
-              props: {},
+              props: { min: 1, max: 9999 },
             },
           ],
         },
@@ -154,6 +166,16 @@ export default function Schemas() {
         icon={<SchemaIcon sx={{ fontSize: 28 }} />}
         title="Schemas"
         subtitle="Manage scouting form layouts"
+        leadingComponent={
+          <IconButton
+            onClick={() => navigate("/settings")}
+            sx={{
+              color: theme.palette.primary.main,
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+        }
       />
 
       {/* Schema List */}
@@ -278,6 +300,22 @@ export default function Schemas() {
                         >
                           <DeleteIcon />
                         </IconButton>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSchemaToShare(s.schema);
+                            openShareDialog();
+                          }}
+                          sx={{
+                            color: theme.palette.text.secondary,
+                            "&:hover": {
+                              backgroundColor: `${theme.palette.secondary.main}20`,
+                              color: theme.palette.secondary.main,
+                            },
+                          }}
+                        >
+                          <ShareIcon />
+                        </IconButton>
                       </>
                     ) : (
                       <Button
@@ -314,33 +352,73 @@ export default function Schemas() {
       </Button>
 
       {/* New Schema Dialog */}
-      <CreateSchemaDialog
+      <CreateDialog
         open={newSchemaDialogOpen}
         onClose={closeNewSchemaDialog}
         onCreate={handleCreateSchema}
+        title="Create New Schema"
+        label="Schema Name"
+        actionButtonText="Create"
       />
 
       {/* Rename Schema Dialog */}
-      <RenameSchemaDialog
+      <RenameDialog
         open={schemaRenameDialogOpen}
         onClose={closeSchemaRenameDialog}
         onRename={handleRenameSchema}
         initialName={schemaToRename?.name || ""}
+        title="Rename Schema"
       />
 
       {/* Delete Schema Confirmation Dialog */}
-      <DeleteSchemaDialog
+      <DeleteDialog
         open={deleteSchemaDialogOpen}
         onClose={closeDeleteSchemaDialog}
         onDelete={handleDeleteSchema}
-        schemaName={schemaToDelete?.name || null}
-      />
+        title={`Delete Schema "${schemaToDelete?.name || ""}"?`}
+      >
+        Are you sure you want to delete this schema? This action cannot be
+        undone.
+      </DeleteDialog>
 
       {/* Duplicate Name Warning Dialog */}
       <DuplicateNameDialog
         open={duplicateNameDialogOpen}
         onClose={closeDuplicateNameDialog}
         errorMessage={duplicateNameError}
+      />
+
+      {schemaToShare && (
+        <ShareDialog
+          mode="schema"
+          open={shareDialogOpen}
+          onClose={closeShareDialog}
+          schema={schemaToShare}
+        />
+      )}
+
+      <Snackbar
+        open={warningOpen}
+        onClose={closeWarning}
+        slots={{ transition: Slide }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ width: "100%" }}
+        slotProps={{
+          content: {
+            sx: {
+              backgroundColor: theme.palette.warning.main,
+              color: theme.palette.warning.contrastText,
+              fontFamily: theme.typography.subtitle1,
+            },
+          },
+        }}
+        message="Editing schemas can create issues with your team's data. Only do so if you have permission from your lead scouter."
+        autoHideDuration={5000}
+        action={
+          <IconButton onClick={closeWarning}>
+            <CloseIcon />
+          </IconButton>
+        }
       />
     </Box>
   );

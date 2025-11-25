@@ -17,18 +17,19 @@ import {
   Stack,
   Tooltip,
   CssBaseline,
+  Slide,
 } from "@mui/material";
 import useDrawer from "./hooks/useDrawer";
 import MenuIcon from "@mui/icons-material/MenuRounded";
 import HomeIcon from "@mui/icons-material/HomeRounded";
+import HelpIcon from "@mui/icons-material/HelpRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import DashboardIcon from "@mui/icons-material/DashboardRounded";
-import SchemaIcon from "@mui/icons-material/SchemaRounded";
 import UpdateIcon from "@mui/icons-material/SystemUpdateRounded";
 import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import {
   HashRouter,
   Route,
@@ -36,23 +37,23 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
-import { ThemeProvider, useTheme } from "@mui/material/styles";
+import { ThemeProvider, alpha, useTheme } from "@mui/material/styles";
 import SchemaProvider from "./context/SchemaContext";
 import Schemas from "./pages/Schemas";
 import SchemaEditor from "./pages/SchemaEditor";
 import LeadScoutDashboard from "./pages/Dashboard";
 import ScoutDataProvider from "./context/ScoutDataContext";
-import TractorDarkTheme from "./config/themes/TractorDarkTheme";
 import { useSettings } from "./context/SettingsContext";
-import TractorLightTheme from "./config/themes/TractorLightTheme";
+import { themeRegistry, type ThemeRegistryKey } from "./config/themes";
 import Archive from "./pages/Archive";
+import Help from "./pages/Help";
 
 const Home = React.lazy(() => import("./pages/Home"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Scout = React.lazy(() => import("./pages/Scout"));
 const QRPage = React.lazy(() => import("./pages/QR"));
 
-const CURRENT_VERSION: string = "0.1.0-beta";
+const CURRENT_VERSION: string = "0.2.0-beta";
 
 // TODO: make this actually get data somewhere
 const checkForUpdates = async (): Promise<{
@@ -61,7 +62,7 @@ const checkForUpdates = async (): Promise<{
 }> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const latestVersion: string = "0.1.0-beta"; // This would come from github releases or something
+      const latestVersion: string = "0.2.0-beta"; // This would come from github releases or something
       resolve({
         available: latestVersion !== CURRENT_VERSION,
         version: latestVersion,
@@ -83,11 +84,6 @@ const pages = [
     path: "/qr",
   },
   {
-    title: "Schemas",
-    icon: <SchemaIcon />,
-    path: "/schemas",
-  },
-  {
     title: "Lead Scouter Dashboard",
     icon: <DashboardIcon />,
     path: "/dashboard",
@@ -102,6 +98,11 @@ const pages = [
     icon: <SettingsIcon />,
     path: "/settings",
   },
+  {
+    title: "Help",
+    icon: <HelpIcon />,
+    path: "/help",
+  },
 ];
 
 // This component contains the UI and uses router hooks.
@@ -110,10 +111,22 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { drawerOpen, toggleDrawer } = useDrawer();
   const navigate = useNavigate();
   const theme = useTheme();
+  const isRuneTheme = theme.farmhandThemeId === "RuneScapeTheme";
+  const isWindowsXpTheme = theme.farmhandThemeId === "WindowsXPTheme";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const location = useLocation();
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [latestVersion, setLatestVersion] = useState("");
+  const [hideHeader, setHideHeader] = useState(false);
+  const lastScrollTop = useRef(0);
+  const accentBackground =
+    theme.palette.primary.container ??
+    alpha(
+      theme.palette.primary.main,
+      theme.palette.mode === "light" ? 0.16 : 0.32
+    );
+  const accentForeground =
+    theme.palette.primary.onContainer ?? theme.palette.primary.contrastText;
 
   useEffect(() => {
     // Check for updates on mount
@@ -124,17 +137,34 @@ function Layout({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const selectedItemSx = {
-    "&.Mui-selected": {
-      backgroundColor: "transparent",
-      borderLeft: `4px solid ${theme.palette.secondary.main}`,
+  useEffect(() => {
+    const scrollThreshold = 10;
+    const handleScroll = () => {
+      const current = window.scrollY || document.documentElement.scrollTop || 0;
+      if (current > lastScrollTop.current + scrollThreshold && current > 80) {
+        setHideHeader(true);
+      } else if (current < lastScrollTop.current - scrollThreshold) {
+        setHideHeader(false);
+      }
+      lastScrollTop.current = Math.max(current, 0);
+    };
 
-      paddingLeft: "12px",
-      "&:hover": {
-        backgroundColor: theme.palette.action.hover,
-      },
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const selectedItemSx = {
+    transition: theme.transitions.create(["background-color", "box-shadow"], {
+      duration: theme.transitions.duration.shortest,
+    }),
+    "&.Mui-selected": {
+      backgroundColor: accentBackground,
+      boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
       "& .MuiListItemIcon-root, & .MuiTypography-root": {
-        color: theme.palette.secondary.main,
+        color: accentForeground,
+      },
+      "&:hover": {
+        backgroundColor: alpha(accentBackground, 0.9),
       },
     },
   };
@@ -147,74 +177,122 @@ function Layout({ children }: { children: React.ReactNode }) {
     return location.pathname.startsWith(path);
   };
 
+  const menuButtonStyles = {
+    mr: 2,
+    ...(isRuneTheme && {
+      backgroundImage: `linear-gradient(135deg, ${alpha(
+        theme.palette.common.white,
+        0.25
+      )}, ${alpha(theme.palette.primary.dark ?? "#0d0f17", 0.9)})`,
+      border: `1px solid ${alpha("#000000", 0.6)}`,
+      color: theme.palette.common.white,
+      boxShadow: `0 6px 14px ${alpha("#000000", 0.6)}`,
+      "&:hover": {
+        backgroundImage: `linear-gradient(135deg, ${alpha(
+          theme.palette.primary.light ?? "#d2b676",
+          0.25
+        )}, ${alpha(theme.palette.primary.main, 0.95)})`,
+        boxShadow: `0 10px 20px ${alpha("#000000", 0.65)}`,
+      },
+    }),
+    ...(isWindowsXpTheme && {
+      backgroundImage: "linear-gradient(180deg, #2a6ad9 0%, #0f3fa6 90%)",
+      border: "1px solid rgba(7, 32, 96, 0.65)",
+      color: "#ffffff",
+      borderRadius: 2,
+      boxShadow: `inset 1px 1px 0 ${alpha(
+        "#ffffff",
+        0.65
+      )}, inset -1px -1px 0 ${alpha("#000000", 0.35)}`,
+      "&:hover": {
+        backgroundImage: "linear-gradient(180deg, #3a80f2 0%, #1b4fb3 90%)",
+      },
+    }),
+  } as const;
+
   return (
     <>
       <Box
         sx={{
           width: "100%",
-          backgroundColor: theme.palette.primary.dark,
           height: "env(safe-area-inset-top, 0px)",
         }}
       />
-      <AppBar
-        position="static"
-        elevation={4}
-        sx={{
-          backgroundColor: theme.palette.primary.main,
-          paddingLeft: "env(safe-area-inset-left, 0px)",
-          paddingRight: "env(safe-area-inset-right, 0px)",
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-            onClick={toggleDrawer(true)}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography
-            variant="h4"
-            sx={{ flexGrow: 1, fontWeight: 600, cursor: "pointer" }}
-            onClick={() => navigate("/")}
-          >
-            FarmHand
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            {updateAvailable && (
-              <Tooltip title={`Update available: v${latestVersion}`}>
-                <Chip
-                  icon={<UpdateIcon />}
-                  label="Update"
-                  color="warning"
-                  size="small"
-                  sx={{
-                    fontWeight: 600,
-                    fontFamily: theme.typography.body1,
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: theme.palette.warning.dark,
-                    },
-                  }}
-                />
-              </Tooltip>
-            )}
-            <Chip
-              label={`v${CURRENT_VERSION}`}
-              size="small"
-              sx={{
-                backgroundColor: `${theme.palette.common.white}20`,
-                color: theme.palette.common.white,
-                fontWeight: 600,
-                fontFamily: theme.typography.body1,
-              }}
-            />
-          </Stack>
-        </Toolbar>
-      </AppBar>
+      <Slide appear={false} direction="down" in={!hideHeader}>
+        <AppBar
+          position="sticky"
+          color="primary"
+          enableColorOnDark
+          elevation={0}
+          sx={{
+            backgroundColor: theme.palette.primary.main,
+            paddingLeft: "env(safe-area-inset-left, 0px)",
+            paddingRight: "env(safe-area-inset-right, 0px)",
+            borderTopRightRadius: 0,
+            borderTopLeftRadius: 0,
+            boxShadow: "none",
+            borderBottom: `1px solid ${theme.palette.surface.outline}`,
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              size="large"
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              sx={menuButtonStyles}
+              onClick={toggleDrawer(true)}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography
+              variant="h3"
+              sx={{ flexGrow: 1, fontWeight: 600, cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            >
+              FarmHand
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {updateAvailable && (
+                <Tooltip title={`Update available: v${latestVersion}`}>
+                  <Chip
+                    icon={<UpdateIcon />}
+                    label="Update"
+                    color="warning"
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      fontFamily: theme.typography.body2?.fontFamily,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: alpha(
+                          theme.palette.warning.main,
+                          theme.palette.mode === "light" ? 0.18 : 0.32
+                        ),
+                      },
+                    }}
+                  />
+                </Tooltip>
+              )}
+              <Chip
+                label={`v${CURRENT_VERSION}`}
+                size="small"
+                sx={{
+                  backgroundColor: theme.palette.primary.dark,
+                  color: theme.palette.text.secondary,
+                  fontWeight: 600,
+                  fontFamily: theme.typography.body2?.fontFamily,
+                  borderRadius: theme.shape.borderRadius,
+                  border: `1px solid ${alpha(
+                    theme.palette.text.primary,
+                    0.15
+                  )}`,
+                }}
+              />
+            </Stack>
+          </Toolbar>
+        </AppBar>
+      </Slide>
 
       <Drawer
         anchor="left"
@@ -225,12 +303,13 @@ function Layout({ children }: { children: React.ReactNode }) {
           paper: {
             sx: {
               width: isMobile ? "75vw" : 300,
-              backgroundColor: theme.palette.background.default,
+              backgroundColor: theme.palette.surface.base,
               display: "flex",
               flexDirection: "column",
               paddingTop: "env(safe-area-inset-top, 0px)",
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
               boxSizing: "border-box",
+              borderRight: `1px solid ${theme.palette.surface.outline}`,
             },
           },
         }}
@@ -249,8 +328,8 @@ function Layout({ children }: { children: React.ReactNode }) {
           <Box
             sx={{
               p: 3,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}15 0%, ${theme.palette.primary.main}05 100%)`,
-              borderBottom: `2px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.surface.variant,
+              borderBottom: `1px solid ${theme.palette.surface.outline}`,
             }}
           >
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -284,7 +363,12 @@ function Layout({ children }: { children: React.ReactNode }) {
           {/* Navigation Items */}
           <List sx={{ flexGrow: 1, pt: 2 }}>
             {pages
-              .filter((item) => item.title !== "Settings")
+              .filter(
+                (item) =>
+                  item.title !== "Settings" &&
+                  item.title !== "Archive" &&
+                  item.title !== "Help"
+              )
               .map((item) => (
                 <ListItem key={item.title} disablePadding sx={{ mb: 0.5 }}>
                   <ListItemButton
@@ -296,9 +380,12 @@ function Layout({ children }: { children: React.ReactNode }) {
                       borderTopLeftRadius: 0,
                       borderBottomLeftRadius: 0,
                       mx: 1,
+                      color: theme.palette.text.secondary,
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ListItemIcon
+                      sx={{ minWidth: 40, color: theme.palette.text.secondary }}
+                    >
                       {item.icon}
                     </ListItemIcon>
                     <ListItemText
@@ -316,38 +403,49 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Bottom section */}
           <Box>
-            <Divider sx={{ mb: 1 }} />
+            <Divider
+              sx={{ mb: 1, borderColor: theme.palette.surface.outline }}
+            />
             <List>
-              <ListItem disablePadding>
-                <ListItemButton
-                  onClick={() => navigate("/settings")}
-                  selected={location.pathname === "/settings"}
-                  sx={{
-                    ...selectedItemSx,
-                    borderRadius: 2,
-                    mx: 1,
-                    mb: 1,
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 40,
-                      borderRadius: 2,
-                      borderTopLeftRadius: 0,
-                      borderBottomLeftRadius: 0,
-                      mx: 1,
-                    }}
-                  >
-                    <SettingsIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography variant="subtitle1">Settings</Typography>
-                    }
-                  />
-                </ListItemButton>
-              </ListItem>
+              {pages
+                .filter(
+                  (item) =>
+                    item.title === "Settings" ||
+                    item.title === "Archive" ||
+                    item.title === "Help"
+                )
+                .map((item) => (
+                  <ListItem key={item.title} disablePadding sx={{ mb: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => navigate(item.path)}
+                      selected={isPathSelected(item.path)}
+                      sx={{
+                        ...selectedItemSx,
+                        borderRadius: 2,
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        mx: 1,
+                      }}
+                    >
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 40,
+                          color: theme.palette.text.secondary,
+                        }}
+                      >
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        disableTypography
+                        primary={
+                          <Typography variant="subtitle1">
+                            {item.title}
+                          </Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
             </List>
           </Box>
         </Box>
@@ -369,8 +467,21 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { settings, settingsLoading } = useSettings();
+  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
+
+  const themeName =
+    (settings.COLOR_THEME as ThemeRegistryKey) || "TractorTheme";
+  const selectedThemeContainer =
+    themeRegistry[themeName] || themeRegistry.TractorTheme;
+
   const theme =
-    settings.THEME === "dark" ? TractorDarkTheme : TractorLightTheme;
+    settings.THEME === "dark"
+      ? selectedThemeContainer.dark
+      : settings.THEME === "light"
+      ? selectedThemeContainer.light
+      : prefersDarkMode
+      ? selectedThemeContainer.dark
+      : selectedThemeContainer.light;
 
   const schema = settings.LAST_SCHEMA_NAME;
 
@@ -435,6 +546,7 @@ export default function App() {
                   <Route path="/dashboard" element={<LeadScoutDashboard />} />
                   <Route path="/archive" element={<Archive />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/help" element={<Help />} />
                 </Routes>
               </Suspense>
             </Layout>

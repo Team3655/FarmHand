@@ -21,12 +21,12 @@ import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 
-import QrShareDialog from "../ui/dialog/QrShareDialog";
 import useDialog from "../hooks/useDialog";
-import { QrCodeBuilder, saveQrCode } from "../utils/QrUtils";
+import { QrCodeBuilder } from "../utils/QrUtils";
 import { getFieldValueByName } from "../utils/GeneralUtils";
 import PageHeader from "../ui/PageHeader";
 import { useSettings } from "../context/SettingsContext";
+import ShareDialog from "../ui/dialog/ShareDialog";
 
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
@@ -39,7 +39,7 @@ export default function Scout() {
     clearErrors,
     getMatchDataMap,
   } = useScoutData();
-  const {settings} = useSettings();
+  const { settings } = useSettings();
   const [resetKey, setResetKey] = useState<Key>(0);
   const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
   const [showResetPopup, openResetPopup, closeResetPopup] = useDialog();
@@ -90,20 +90,14 @@ export default function Scout() {
 
     const teamNumber = getFieldValueByName("Team Number", schema!, matchData);
     const matchNumber = getFieldValueByName("Match Number", schema!, matchData);
-    const qr = await QrCodeBuilder.build.MATCH(schemaHash, minifiedJSON, [
-      teamNumber!,
-      matchNumber!,
-    ], deviceID);
+    const qr = await QrCodeBuilder.build.MATCH(
+      schemaHash,
+      minifiedJSON,
+      [teamNumber!, matchNumber!],
+      deviceID
+    );
     qrCodeData.current = qr;
     openQrPopup();
-  };
-
-  const handleSaveQR = async () => {
-    if (!qrCodeData.current) return;
-
-    await saveQrCode(qrCodeData.current);
-
-    closeQrPopup();
   };
 
   if (!schema) {
@@ -192,7 +186,7 @@ export default function Scout() {
             fontWeight: 600,
           }}
         >
-          <HelpIcon sx={{ mr: 1 }} />
+          <HelpIcon sx={{ mr: 1 }} color="primary" />
           Are you sure you want to reset the form?
         </DialogTitle>
         <DialogActions sx={{ p: 2 }}>
@@ -231,7 +225,7 @@ export default function Scout() {
             fontWeight: 600,
           }}
         >
-          <ErrorOutlineIcon sx={{ mr: 1 }} />
+          <ErrorOutlineIcon sx={{ mr: 1 }} color="error" />
           Form Errors
         </DialogTitle>
         <DialogContent>
@@ -281,11 +275,11 @@ export default function Scout() {
       </Dialog>
 
       {/*QR export popup */}
-      <QrShareDialog
+      <ShareDialog
+        mode="match"
         open={showQrPopup}
         onClose={closeQrPopup}
         qrCodeData={qrCodeData.current!}
-        handleSaveQR={handleSaveQR}
       />
     </>
   );

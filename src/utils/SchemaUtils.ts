@@ -6,16 +6,16 @@ import {
   readTextFile,
 } from "@tauri-apps/plugin-fs";
 import { createSchemaHash } from "./GeneralUtils";
-import testSchema from "../config/schema/test.json";
 import { appLocalDataDir, resolve } from "@tauri-apps/api/path";
 import Reefscape from "../config/schema/2025Reefscape.json";
+import Decode from "../config/schema/2025Decode.json";
 import { invoke } from "@tauri-apps/api/core";
 
 export const defaultSchemas: SchemaMetaData[] = [
   {
-    name: "Test Schema",
-    path: "../config/schema/test.json",
-    schema: testSchema as Schema,
+    name: "2025 Decode",
+    path: "../config/schema/2025Decode.json",
+    schema: Decode as Schema,
     type: "default",
   },
   {

@@ -7,29 +7,30 @@ import {
   TextField,
 } from "@mui/material";
 import { useState, useEffect } from "react";
+import AddIcon from "@mui/icons-material/AddRounded";
 
-interface AddSectionDialogProps {
+interface CreateDialogProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (sectionName: string) => void;
+  onCreate: (name: string) => void;
+  title: string;
+  label: string;
+  actionButtonText?: string;
 }
 
-export default function AddSectionDialog({
-  open,
-  onClose,
-  onAdd,
-}: AddSectionDialogProps) {
+export default function CreateDialog(props: CreateDialogProps) {
+  const { open, onClose, onCreate, title, label, actionButtonText } = props;
   const [name, setName] = useState("");
 
   useEffect(() => {
     if (open) {
-      setName("");
+      setName(""); // Reset when dialog opens
     }
   }, [open]);
 
-  const handleAdd = () => {
+  const handleCreate = () => {
     if (name.trim()) {
-      onAdd(name.trim());
+      onCreate(name.trim());
     }
   };
 
@@ -39,11 +40,16 @@ export default function AddSectionDialog({
       onClose={onClose}
       slotProps={{ paper: { sx: { borderRadius: 3, minWidth: 400 } } }}
     >
-      <DialogTitle sx={{ fontWeight: 600 }}>Add Section</DialogTitle>
+      <DialogTitle
+        sx={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 1 }}
+      >
+        <AddIcon color="primary" />
+        {title}
+      </DialogTitle>
       <DialogContent>
         <TextField
           autoFocus
-          label="Section Name"
+          label={label}
           value={name}
           onChange={(e) => setName(e.target.value)}
           fullWidth
@@ -55,12 +61,12 @@ export default function AddSectionDialog({
           Cancel
         </Button>
         <Button
-          onClick={handleAdd}
-          disabled={!name.trim()}
+          onClick={handleCreate}
           variant="contained"
+          disabled={!name.trim()}
           sx={{ borderRadius: 2 }}
         >
-          Add
+          {actionButtonText}
         </Button>
       </DialogActions>
     </Dialog>

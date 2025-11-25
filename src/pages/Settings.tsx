@@ -5,13 +5,13 @@ import {
   Stack,
   Card,
   CardContent,
-  useTheme,
   Divider,
   Switch,
   FormControlLabel,
   Button,
   TextField,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import DropdownInput from "../ui/components/DropdownInput";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import SchemaIcon from "@mui/icons-material/DescriptionRounded";
@@ -23,11 +23,25 @@ import InfoIcon from "@mui/icons-material/InfoRounded";
 import { useState } from "react";
 import PageHeader from "../ui/PageHeader";
 import { useSettings } from "../context/SettingsContext";
+import { useNavigate } from "react-router";
+import { themeRegistry } from "../config/themes";
 
 export default function Settings() {
   const { schemaName, availableSchemas } = useSchema();
   const { setSetting, settings } = useSettings();
   const theme = useTheme();
+  const navigate = useNavigate();
+  const themeOptions = Object.keys(themeRegistry);
+  const themedDropdownOptions = themeOptions.map((key) => ({
+    value: key,
+    label: themeRegistry[key as keyof typeof themeRegistry].meta.displayName,
+  }));
+  const selectedTheme =
+    themeRegistry[
+      (settings.COLOR_THEME as keyof typeof themeRegistry) ?? "TractorTheme"
+    ];
+  const tintSurface = (color: string) =>
+    alpha(color, theme.palette.mode === "light" ? 0.12 : 0.32);
 
   // TODO: Make these actually function
   const [notifications, setNotifications] = useState(true);
@@ -70,13 +84,22 @@ export default function Settings() {
       color: theme.palette.secondary.main,
       settings: [
         {
-          type: "switch",
-          label: "Dark Mode",
-          description: "Use dark theme throughout the app",
-          checked: settings.THEME === "dark",
-          onChange: (checked: boolean) => {
-            handleChange("THEME", checked ? "dark" : "light");
-          },
+          type: "dropdown",
+          label: "Color Theme",
+          description: "Select the color palette for the app",
+          value: settings.COLOR_THEME || "TractorTheme",
+          options: themedDropdownOptions,
+          onChange: (value: string) => handleChange("COLOR_THEME", value),
+        },
+        {
+          type: "dropdown",
+          label: "Theme Mode",
+          description: "Use light, dark, or system theme",
+          value:
+            settings.THEME.charAt(0).toUpperCase() + settings.THEME.slice(1),
+          options: ["Light", "Dark", "System"],
+          onChange: (value: string) =>
+            handleChange("THEME", value.toLowerCase()),
         },
       ],
     },
@@ -239,20 +262,22 @@ export default function Settings() {
             key={section.id}
             elevation={0}
             sx={{
-              border: `2px solid ${theme.palette.divider}`,
-              borderRadius: 3,
+              border: `1px solid ${theme.palette.surface.outline}`,
+              borderRadius: theme.shape.borderRadius,
+              backgroundColor: theme.palette.surface.elevated,
               transition: "all 0.3s ease",
               "&:hover": {
-                borderColor: section.color,
-                boxShadow: `0 4px 12px ${section.color}20`,
+                borderColor: alpha(section.color, 0.6),
+                boxShadow: theme.customShadows.card,
+                transform: "translateY(-2px)",
               },
             }}
           >
             {/* Section Header */}
             <Box
               sx={{
-                background: `linear-gradient(135deg, ${section.color}15 0%, ${section.color}05 100%)`,
-                borderBottom: `2px solid ${theme.palette.divider}`,
+                backgroundColor: tintSurface(section.color),
+                borderBottom: `1px solid ${theme.palette.surface.outline}`,
                 p: 2,
               }}
             >
@@ -265,7 +290,10 @@ export default function Settings() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: `${section.color}20`,
+                    backgroundColor: alpha(
+                      section.color,
+                      theme.palette.mode === "light" ? 0.2 : 0.35
+                    ),
                     color: section.color,
                   }}
                 >
@@ -305,14 +333,53 @@ export default function Settings() {
                             {renderSettingControl(setting)}
                           </Box>
                         </Stack>
+                        {setting.label === "Color Theme" &&
+                          selectedTheme?.meta?.flavorText && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 1.5 }}
+                            >
+                              {selectedTheme.meta.flavorText}
+                            </Typography>
+                          )}
                         {index < section.settings.length - 1 && (
-                          <Divider sx={{ mt: 3 }} />
+                          <Divider
+                            sx={{
+                              mt: 3,
+                              borderColor: theme.palette.surface.outline,
+                            }}
+                          />
                         )}
                       </Box>
                     )
                 )}
               </Stack>
             </CardContent>
+            {section.id === "scouting" && (
+              <>
+                <Divider sx={{ borderColor: theme.palette.surface.outline }} />
+                <Box sx={{ p: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    onClick={() =>
+                      navigate("/schemas", { state: { showWarning: true } })
+                    }
+                    startIcon={<SchemaIcon />}
+                    sx={{
+                      borderRadius: theme.shape.borderRadius,
+                      py: 1.5,
+                      borderWidth: 2,
+                      "&:hover": { borderWidth: 2 },
+                    }}
+                  >
+                    Open Schema Editor
+                  </Button>
+                </Box>
+              </>
+            )}
           </Card>
         ))}
 
@@ -320,14 +387,14 @@ export default function Settings() {
         <Card
           elevation={0}
           sx={{
-            border: `2px solid ${theme.palette.divider}`,
-            borderRadius: 3,
+            border: `1px solid ${theme.palette.surface.outline}`,
+            borderRadius: theme.shape.borderRadius,
           }}
         >
           <Box
             sx={{
-              background: `linear-gradient(135deg, ${theme.palette.info.main}15 0%, ${theme.palette.info.main}05 100%)`,
-              borderBottom: `2px solid ${theme.palette.divider}`,
+              backgroundColor: tintSurface(theme.palette.info.main),
+              borderBottom: `1px solid ${theme.palette.surface.outline}`,
               p: 2,
             }}
           >
@@ -340,7 +407,10 @@ export default function Settings() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: `${theme.palette.info.main}20`,
+                  backgroundColor: alpha(
+                    theme.palette.info.main,
+                    theme.palette.mode === "light" ? 0.2 : 0.35
+                  ),
                   color: theme.palette.info.main,
                 }}
               >
@@ -358,10 +428,10 @@ export default function Settings() {
                   Version
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  FarmHand v0.1.0-beta.0
+                  FarmHand v0.2.0-beta
                 </Typography>
               </Box>
-              <Divider />
+              <Divider sx={{ borderColor: theme.palette.surface.outline }} />
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
                   Developed by
@@ -370,7 +440,7 @@ export default function Settings() {
                   FRC Team 3655, The Tractor Technicians
                 </Typography>
               </Box>
-              <Divider />
+              <Divider sx={{ borderColor: theme.palette.surface.outline }} />
               <Box>
                 <Typography
                   variant="subtitle2"
@@ -382,7 +452,10 @@ export default function Settings() {
                 <Button
                   variant="outlined"
                   color="info"
-                  sx={{ borderRadius: 2, borderWidth: 2 }}
+                  sx={{
+                    borderRadius: theme.shape.borderRadius,
+                    borderWidth: 2,
+                  }}
                 >
                   View Open Source Licenses
                 </Button>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import {
   SortableContext,
   verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import {
   DndContext,
@@ -32,6 +33,10 @@ import {
   Slide,
   Snackbar,
   useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import EditableComponentCard from "../ui/EditableComponentCard";
 import PageHeader from "../ui/PageHeader";
@@ -41,41 +46,31 @@ import WarningIcon from "@mui/icons-material/WarningRounded";
 import SearchIcon from "@mui/icons-material/SearchRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import SchemaIcon from "@mui/icons-material/SchemaRounded";
+import ShareIcon from "@mui/icons-material/ShareRounded";
 import AddIcon from "@mui/icons-material/AddRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import CloseIcon from "@mui/icons-material/CloseRounded";
 import useDialog from "../hooks/useDialog";
 import { useSchema } from "../context/SchemaContext";
-import AddSectionDialog from "../ui/dialog/AddSectionDialog";
-import DeleteSectionDialog from "../ui/dialog/DeleteSectionDialog";
+import CreateDialog from "../ui/dialog/CreateDialog";
+import DeleteDialog from "../ui/dialog/DeleteDialog";
 import DuplicateNameDialog from "../ui/dialog/DuplicateNameDialog";
-import RenameSectionDialog from "../ui/dialog/RenameSectionDialog";
 import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
 import { saveSchema } from "../utils/SchemaUtils";
-
-type DropTarget = {
-  sectionIndex: number;
-  fieldIndex: number;
-};
-
-type DragMeta =
-  | { type: "field"; sectionIndex: number; fieldIndex: number }
-  | { type: "section"; sectionIndex: number };
+import ShareDialog from "../ui/dialog/ShareDialog";
+import RenameDialog from "../ui/dialog/RenameDialog";
 
 function DroppableSection({
   section,
-  sectionIndex,
   children,
 }: {
   section: SectionData;
-  sectionIndex: number;
   children: ReactNode;
 }) {
   const { setNodeRef } = useDroppable({
     id: section.title,
     data: {
       type: "section",
-      sectionIndex,
     },
   });
 
@@ -103,6 +98,9 @@ export default function SchemaEditor() {
   const [sectionDialogOpen, openSectionDialog, closeSectionDialog] =
     useDialog();
   const [renameDialogOpen, openRenameDialog, closeRenameDialog] = useDialog();
+  const [shareDialogOpen, openShareDialog, closeShareDialog] = useDialog();
+  const [warningDialogOpen, openWarningDialog, closeWarningDialog] =
+    useDialog();
   const [
     deleteSectionDialogOpen,
     openDeleteSectionDialog,
@@ -129,19 +127,23 @@ export default function SchemaEditor() {
 
   const isDraggingRef = useRef(false);
   const lastUpdateRef = useRef<string>("");
-  const scrollPositionRef = useRef(0);
-  const dropPreviewRef = useRef<DropTarget | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
       },
+      onActivation: (event) => {
+        event.event.preventDefault();
+      },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 250,
         tolerance: 100,
+      },
+      onActivation: (event) => {
+        event.event.preventDefault();
       },
     })
   );
@@ -239,6 +241,16 @@ export default function SchemaEditor() {
     return true;
   }, [editingSchema]);
 
+  const getOriginalSectionIndex = (filteredIndex: number) => {
+    if (!searchQuery.trim() || !editingSchema) {
+      return filteredIndex;
+    }
+    const filteredSection = filteredSchema!.sections[filteredIndex];
+    return editingSchema.sections.findIndex(
+      (s) => s.title === filteredSection.title
+    );
+  };
+
   const checkSectionNameExists = (name: string, excludeIndex?: number) => {
     if (!editingSchema) return false;
     return editingSchema.sections.some(
@@ -265,7 +277,7 @@ export default function SchemaEditor() {
     if (hasUnsavedChanges && isEditable) {
       openUnsavedChangesDialog();
     } else {
-      navigate("/schemas");
+      navigate("/schemas", { state: { showWarning: false } });
     }
   };
 
@@ -275,6 +287,7 @@ export default function SchemaEditor() {
   };
 
   const handleSaveSchema = async () => {
+    closeWarningDialog();
     if (!editingSchema) return;
     await saveSchema(editingSchema);
     const newSchemas = await refreshSchemas();
@@ -425,18 +438,8 @@ export default function SchemaEditor() {
     });
   };
 
-  const getOriginalSectionIndex = (filteredIndex: number) => {
-    if (!searchQuery.trim() || !editingSchema) return filteredIndex;
-
-    const filteredSection = filteredSchema!.sections[filteredIndex];
-    return editingSchema.sections.findIndex(
-      (s: SectionData) => s.title === filteredSection!.title
-    );
-  };
-
   function handleDragStart(event: DragStartEvent) {
     isDraggingRef.current = true;
-    scrollPositionRef.current = window.scrollY; // Save scroll position
     setActiveId(event.active.id);
   }
 
@@ -455,232 +458,116 @@ export default function SchemaEditor() {
     return null;
   };
 
-  const determineDropTargetById = (
-    schema: Schema,
-    overId: string | number
-  ): DropTarget | null => {
-    const sectionIndex = schema.sections.findIndex(
-      (s: SectionData) => s.title === overId
-    );
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
 
-    if (sectionIndex !== -1) {
-      return {
-        sectionIndex,
-        fieldIndex: schema.sections[sectionIndex].fields.length,
-      };
+    if (!over || !editingSchema || active.id === over.id) {
+      return;
     }
 
-    for (let i = 0; i < schema.sections.length; i++) {
-      const fieldIndex = schema.sections[i].fields.findIndex(
-        (f: Component) => f.id === overId
+    const activeId = active.id;
+    const overId = over.id;
+
+    const sourceLocation = findFieldLocation(editingSchema, activeId);
+    if (!sourceLocation) return;
+    const sourceContainerId =
+      editingSchema.sections[sourceLocation.sectionIndex].title;
+
+    const overLocation = findFieldLocation(editingSchema, overId);
+    const overContainerId = overLocation
+      ? editingSchema.sections[overLocation.sectionIndex].title
+      : overId.toString();
+
+    if (sourceContainerId === overContainerId) {
+      return; // Same container, handled by onDragEnd
+    }
+
+    // Cross-container move
+    setEditingSchema((prevSchema) => {
+      if (!prevSchema) return null;
+
+      const fromSectionIndex = prevSchema.sections.findIndex(
+        (s) => s.title === sourceContainerId
       );
-      if (fieldIndex !== -1) {
-        return { sectionIndex: i, fieldIndex };
-      }
-    }
+      const toSectionIndex = prevSchema.sections.findIndex(
+        (s) => s.title === overContainerId
+      );
 
-    return null;
-  };
-
-  const getDropTargetFromEvent = (
-    schema: Schema,
-    active: DragOverEvent["active"] | DragEndEvent["active"],
-    over: DragOverEvent["over"]
-  ): DropTarget | null => {
-    if (!over) return null;
-
-    const data = over.data?.current as DragMeta | undefined;
-    const sortableData = (over.data?.current as any)?.sortable as
-      | { containerId: string | number; index: number }
-      | undefined;
-
-    console.log("getDropTargetFromEvent: Over Data", data);
-    console.log("getDropTargetFromEvent: Sortable Data", sortableData);
-
-    if (sortableData) {
-      const sectionIndex =
-        data?.type === "field" && typeof data.sectionIndex === "number"
-          ? data.sectionIndex
-          : schema.sections.findIndex(
-              (s: SectionData) => s.title === sortableData.containerId
-            );
-
-      if (sectionIndex === -1 || sectionIndex === undefined) {
-        console.log("getDropTargetFromEvent: Section Index not found");
-        return determineDropTargetById(schema, over.id);
+      if (fromSectionIndex === -1 || toSectionIndex === -1) {
+        return prevSchema;
       }
 
-      let fieldIndex =
-        typeof sortableData.index === "number"
-          ? sortableData.index
-          : data?.type === "field"
-          ? data.fieldIndex
-          : schema.sections[sectionIndex].fields.findIndex(
-              (f: Component) => f.id === over.id
-            );
-
-      if (fieldIndex < 0 || fieldIndex === undefined) {
-        console.log("getDropTargetFromEvent: Field Index not found");
-        fieldIndex = schema.sections[sectionIndex].fields.length;
+      const fromFieldIndex = prevSchema.sections[
+        fromSectionIndex
+      ].fields.findIndex((f) => f.id === activeId);
+      if (fromFieldIndex === -1) {
+        return prevSchema;
       }
 
-      const activeRect =
-        active.rect.current.translated ?? active.rect.current.initial;
-      const overRect = over.rect;
+      const overFieldInDest = findFieldLocation(prevSchema, overId);
+      let toFieldIndex = overFieldInDest
+        ? overFieldInDest.fieldIndex
+        : prevSchema.sections[toSectionIndex].fields.length;
 
-      if (activeRect && overRect) {
-        const isBelowMidpoint =
-          activeRect.top + activeRect.height / 2 >
-          overRect.top + overRect.height / 2;
-        if (isBelowMidpoint) {
-          fieldIndex += 1;
+      // Adjust index based on drop position relative to the 'over' item
+      if (overFieldInDest && over.rect && active.rect.current.translated) {
+        const isBelow =
+          active.rect.current.translated.top >
+          over.rect.top + over.rect.height / 2;
+        if (isBelow) {
+          toFieldIndex += 1;
         }
       }
 
-      const clampedIndex = Math.min(
-        Math.max(fieldIndex, 0),
-        schema.sections[sectionIndex].fields.length
+      const newSections = JSON.parse(JSON.stringify(prevSchema.sections));
+      const [movedField] = newSections[fromSectionIndex].fields.splice(
+        fromFieldIndex,
+        1
       );
+      newSections[toSectionIndex].fields.splice(toFieldIndex, 0, movedField);
 
-      console.log("getDropTargetFromEvent: Calculated Drop Target", {
-        sectionIndex,
-        fieldIndex: clampedIndex,
-      });
-
-      return {
-        sectionIndex,
-        fieldIndex: clampedIndex,
-      };
-    }
-
-    if (data?.type === "section") {
-      const section = schema.sections[data.sectionIndex];
-      if (!section) {
-        console.log("getDropTargetFromEvent: Section not found");
-        return null;
-      }
-      return {
-        sectionIndex: data.sectionIndex,
-        fieldIndex: section.fields.length,
-      };
-    }
-
-    console.log("getDropTargetFromEvent: No Sortable Data or Section Data");
-    return determineDropTargetById(schema, over.id);
-  };
-
-  const getSourceFromActive = (
-    schema: Schema,
-    active: DragEndEvent["active"] | DragOverEvent["active"]
-  ): DropTarget | null => {
-    const data = active.data?.current as DragMeta | undefined;
-    if (data?.type === "field") {
-      return {
-        sectionIndex: data.sectionIndex,
-        fieldIndex: data.fieldIndex,
-      };
-    }
-    return findFieldLocation(schema, active.id);
-  };
-
-  function handleDragOver(event: DragOverEvent) {
-    if (!editingSchema) return;
-    const { active, over } = event;
-    if (!active) {
-      console.log("handleDragOver: Active is null");
-      return;
-    }
-
-    if (!over) {
-      console.log("handleDragOver: Over is null");
-      return;
-    }
-
-    const source = getSourceFromActive(editingSchema, active);
-    const destination = getDropTargetFromEvent(editingSchema, active, over);
-
-    console.log("handleDragOver: Source", source);
-    console.log("handleDragOver: Destination", destination);
-
-    if (!source || !destination) {
-      console.log("handleDragOver: Source or destination is null");
-      return;
-    }
-
-    const isSameSpot =
-      dropPreviewRef.current &&
-      dropPreviewRef.current.sectionIndex === destination.sectionIndex &&
-      dropPreviewRef.current.fieldIndex === destination.fieldIndex;
-
-    if (isSameSpot) {
-      console.log("handleDragOver: Same spot");
-      return;
-    }
-
-    dropPreviewRef.current = destination;
+      return { ...prevSchema, sections: newSections };
+    });
   }
 
   function resetDragState() {
     isDraggingRef.current = false;
     lastUpdateRef.current = "";
     setActiveId(null);
-    dropPreviewRef.current = null;
   }
 
-  function handleDragEnd(event?: DragEndEvent) {
-    const storedScrollY = scrollPositionRef.current;
-    resetDragState();
-
-    // Restore scroll position after a short delay to let React finish rendering
-    requestAnimationFrame(() => {
-      window.scrollTo(0, storedScrollY);
-    });
-
-    if (!event || !editingSchema) return;
-
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!active || !over) return;
 
-    setEditingSchema((prev) => {
-      if (!prev) return prev;
+    if (over && active.id !== over.id) {
+      const sourceLocation = findFieldLocation(editingSchema!, active.id);
+      const overLocation = findFieldLocation(editingSchema!, over.id);
 
-      const source = getSourceFromActive(prev, active);
-      const destination = getDropTargetFromEvent(prev, active, over);
-
-      if (!source || !destination) return prev;
-
-      const movingWithinSamePosition =
-        source.sectionIndex === destination.sectionIndex &&
-        source.fieldIndex === destination.fieldIndex;
-
-      if (movingWithinSamePosition) return prev;
-
-      const newSections = prev.sections.map((section: SectionData) => ({
-        ...section,
-        fields: [...section.fields],
-      }));
-
-      const [movedField] = newSections[source.sectionIndex].fields.splice(
-        source.fieldIndex,
-        1
-      );
-
-      if (!movedField) return prev;
-
-      const targetFields = newSections[destination.sectionIndex].fields;
-
-      let insertIndex = destination.fieldIndex;
+      // Only handle same-container sorting.
       if (
-        source.sectionIndex === destination.sectionIndex &&
-        source.fieldIndex < destination.fieldIndex
+        sourceLocation &&
+        overLocation &&
+        sourceLocation.sectionIndex === overLocation.sectionIndex
       ) {
-        insertIndex = Math.max(destination.fieldIndex - 1, 0);
+        const { sectionIndex, fieldIndex: fromIndex } = sourceLocation;
+        const { fieldIndex: toIndex } = overLocation;
+
+        if (fromIndex !== toIndex) {
+          setEditingSchema((schema) => {
+            if (!schema) return null;
+            const newSections = JSON.parse(JSON.stringify(schema.sections));
+            newSections[sectionIndex].fields = arrayMove(
+              newSections[sectionIndex].fields,
+              fromIndex,
+              toIndex
+            );
+            return { ...schema, sections: newSections };
+          });
+        }
       }
+    }
 
-      targetFields.splice(insertIndex, 0, movedField);
-
-      return { ...prev, sections: newSections };
-    });
+    resetDragState();
   }
 
   function handleDragCancel() {
@@ -707,384 +594,440 @@ export default function SchemaEditor() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragCancel={handleDragCancel}
-      onDragEnd={handleDragEnd}
-      collisionDetection={closestCenter}
-    >
-      <Box
-        sx={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          p: 3,
-          bgcolor: theme.palette.background.default,
-        }}
+    <>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+        collisionDetection={closestCenter}
       >
-        <PageHeader
-          icon={<SchemaIcon sx={{ fontSize: 28 }} />}
-          title={`${isEditable ? "Editing" : "Viewing"}: ${editingSchema.name}`}
-          subtitle={
-            isEditable
-              ? "Change or create form fields"
-              : "Built-in schemas are view only"
-          }
-          leadingComponent={
-            <IconButton
-              onClick={handleBackClick}
-              sx={{
-                color: theme.palette.primary.main,
-              }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          }
-          trailingComponent={
-            <Stack direction="column" spacing={2} alignItems="center">
-              {isEditable && hasUnsavedChanges && (
-                <Chip
-                  icon={<WarningIcon />}
-                  label="Unsaved Changes"
-                  color="warning"
+        <Box
+          sx={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            p: 3,
+            bgcolor: theme.palette.background.default,
+          }}
+        >
+          <PageHeader
+            icon={<SchemaIcon sx={{ fontSize: 28 }} />}
+            title={`${isEditable ? "Editing" : "Viewing"}: ${
+              editingSchema.name
+            }`}
+            subtitle={
+              isEditable
+                ? "Change or create form fields"
+                : "Built-in schemas are view only"
+            }
+            leadingComponent={
+              <IconButton
+                onClick={handleBackClick}
+                sx={{
+                  color: theme.palette.primary.main,
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            }
+            trailingComponent={
+              <Stack direction="row" spacing={2}>
+                <IconButton
+                  onClick={openShareDialog}
                   sx={{
-                    fontWeight: 600,
-                    fontFamily: theme.typography.body1,
+                    color: theme.palette.secondary.main,
+                    "&:hover": {
+                      backgroundColor: `${theme.palette.secondary.main}20`,
+                    },
                   }}
-                />
-              )}
-              {isEditable && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSaveSchema}
-                  startIcon={<SaveIcon />}
-                  size="large"
-                  disabled={!isSchemaSaveable}
-                  sx={{ borderRadius: 2 }}
                 >
-                  Save Schema
-                </Button>
-              )}
-            </Stack>
-          }
-        />
-
-        {editingSchema.sections?.length > 0 && (
-          <TextField
-            placeholder="Search sections and fields..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            fullWidth
-            sx={{ mb: 3 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: searchQuery && (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setSearchQuery("")} size="small">
-                      <CloseIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-        )}
-
-        <Stack spacing={3}>
-          {filteredSchema?.sections?.length ? (
-            filteredSchema.sections.map((section: SectionData, i: number) => {
-              const originalIndex = getOriginalSectionIndex(i);
-              const isProtectedSection = section.fields.some(
-                (field: Component) =>
-                  field.name === "Match Number" || field.name === "Team Number"
-              );
-
-              return (
-                <DroppableSection
-                  key={section.title}
-                  section={section}
-                  sectionIndex={originalIndex}
-                >
-                  <SortableContext
-                    id={section.title}
-                    items={section.fields.map((f: Component) => f.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <Card
-                      elevation={0}
+                  <ShareIcon />
+                </IconButton>
+                <Stack direction="column" spacing={2} alignItems="center">
+                  {isEditable && hasUnsavedChanges && (
+                    <Chip
+                      icon={<WarningIcon />}
+                      label="Unsaved Changes"
+                      color="warning"
                       sx={{
-                        border: `2px solid ${theme.palette.divider}`,
-                        borderRadius: 3,
+                        fontWeight: 600,
+                        fontFamily: theme.typography.body1,
                       }}
+                    />
+                  )}
+                  {isEditable && (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={openWarningDialog}
+                      startIcon={<SaveIcon />}
+                      size="large"
+                      disabled={!isSchemaSaveable}
+                      sx={{ borderRadius: 2 }}
                     >
-                      <Box
+                      Save Schema
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+            }
+          />
+
+          {editingSchema.sections?.length > 0 && (
+            <TextField
+              placeholder="Search sections and fields..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              fullWidth
+              sx={{ mb: 3 }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setSearchQuery("")}
+                        size="small"
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          )}
+
+          <Stack spacing={3}>
+            {filteredSchema?.sections?.length ? (
+              filteredSchema.sections.map((section: SectionData, i: number) => {
+                const originalIndex = getOriginalSectionIndex(i);
+                const isProtectedSection = section.fields.some(
+                  (field: Component) =>
+                    field.name === "Match Number" ||
+                    field.name === "Team Number"
+                );
+                return (
+                  <DroppableSection key={section.title} section={section}>
+                    <SortableContext
+                      id={section.title}
+                      items={section.fields.map((f) => f.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <Card
+                        elevation={0}
                         sx={{
-                          background: `linear-gradient(135deg, ${theme.palette.primary.main}15 0%, ${theme.palette.primary.main}05 100%)`,
-                          borderBottom: `2px solid ${theme.palette.divider}`,
-                          p: 2,
+                          border: `2px solid ${theme.palette.divider}`,
+                          borderRadius: 3,
                         }}
                       >
-                        {isEditable ? (
-                          <Stack
-                            direction="row"
-                            spacing={2}
-                            alignItems="center"
-                            justifyContent="space-between"
-                          >
+                        <Box
+                          sx={{
+                            background: `linear-gradient(135deg, ${theme.palette.primary.main}15 0%, ${theme.palette.primary.main}05 100%)`,
+                            borderBottom: `2px solid ${theme.palette.divider}`,
+                            p: 2,
+                          }}
+                        >
+                          {isEditable ? (
+                            <Stack
+                              direction="row"
+                              spacing={2}
+                              alignItems="center"
+                              justifyContent="space-between"
+                            >
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {section.title}
+                              </Typography>
+                              <Stack direction="row">
+                                <IconButton
+                                  onClick={() => {
+                                    setSectionToRenameIndex(originalIndex);
+                                    openRenameDialog();
+                                  }}
+                                  sx={{
+                                    "&:hover": {
+                                      backgroundColor: `${theme.palette.primary.main}20`,
+                                      color: theme.palette.primary.main,
+                                    },
+                                  }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton
+                                  onClick={() => {
+                                    setSectionToDeleteIndex(originalIndex);
+                                    openDeleteSectionDialog();
+                                  }}
+                                  disabled={isProtectedSection}
+                                  sx={{
+                                    "&:hover": {
+                                      backgroundColor: `${theme.palette.error.main}20`,
+                                      color: theme.palette.error.main,
+                                    },
+                                  }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Stack>
+                            </Stack>
+                          ) : (
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
                               {section.title}
                             </Typography>
-                            <Stack direction="row">
-                              <IconButton
-                                onClick={() => {
-                                  setSectionToRenameIndex(originalIndex);
-                                  openRenameDialog();
-                                }}
-                                sx={{
-                                  "&:hover": {
-                                    backgroundColor: `${theme.palette.primary.main}20`,
-                                    color: theme.palette.primary.main,
-                                  },
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton
-                                onClick={() => {
-                                  setSectionToDeleteIndex(originalIndex);
-                                  openDeleteSectionDialog();
-                                }}
-                                disabled={isProtectedSection}
-                                sx={{
-                                  "&:hover": {
-                                    backgroundColor: `${theme.palette.error.main}20`,
-                                    color: theme.palette.error.main,
-                                  },
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Stack>
-                          </Stack>
-                        ) : (
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {section.title}
-                          </Typography>
-                        )}
-                      </Box>
-                      <CardContent>
-                        {section.fields.length ? (
-                          section.fields.map((field: Component) => {
-                            const fieldIndex = editingSchema.sections[
-                              originalIndex
-                            ].fields.findIndex(
-                              (f: Component) => f.id === field.id
-                            );
-                            return (
-                              <EditableComponentCard
-                                key={field.id}
-                                component={field}
-                                onChange={(updatedComponent) =>
-                                  handleComponentChange(
-                                    originalIndex,
-                                    fieldIndex,
-                                    updatedComponent
-                                  )
-                                }
-                                onDelete={(component) =>
-                                  handleDeleteField(component)
-                                }
-                                editable={!!isEditable}
-                              />
-                            );
-                          })
-                        ) : (
-                          <Typography
-                            variant="body1"
-                            color="text.secondary"
-                            sx={{ p: 2, textAlign: "center" }}
-                          >
-                            {searchQuery.trim()
-                              ? "No matching fields"
-                              : "Drop fields here or add a new field"}
-                          </Typography>
-                        )}
-                        {isEditable && !searchQuery.trim() && (
-                          <Button
-                            variant="outlined"
-                            onClick={() => handleAddField(originalIndex)}
-                            color="secondary"
-                            sx={{ mt: 2, borderRadius: 2 }}
-                            startIcon={<AddIcon />}
-                          >
-                            Add Field
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </SortableContext>
-                </DroppableSection>
-              );
-            })
-          ) : searchQuery.trim() ? (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                textAlign: "center",
-                borderRadius: 3,
-                border: `2px dashed ${theme.palette.divider}`,
-              }}
-            >
-              <SearchIcon
+                          )}
+                        </Box>
+                        <CardContent>
+                          {section.fields.length ? (
+                            section.fields.map((field: Component) => {
+                              const fieldIndex = editingSchema.sections[
+                                originalIndex
+                              ].fields.findIndex(
+                                (f: Component) => f.id === field.id
+                              );
+                              return (
+                                <EditableComponentCard
+                                  key={field.id}
+                                  component={field}
+                                  onChange={(updatedComponent) =>
+                                    handleComponentChange(
+                                      originalIndex,
+                                      fieldIndex,
+                                      updatedComponent
+                                    )
+                                  }
+                                  onDelete={(component) =>
+                                    handleDeleteField(component)
+                                  }
+                                  editable={!!isEditable}
+                                />
+                              );
+                            })
+                          ) : (
+                            <Typography
+                              variant="body1"
+                              color="text.secondary"
+                              sx={{ p: 2, textAlign: "center" }}
+                            >
+                              {searchQuery.trim()
+                                ? "No matching fields"
+                                : "Drop fields here or add a new field"}
+                            </Typography>
+                          )}
+                          {isEditable && !searchQuery.trim() && (
+                            <Button
+                              variant="contained"
+                              onClick={() => handleAddField(originalIndex)}
+                              color="secondary"
+                              sx={{ mt: 2, borderRadius: 2 }}
+                              startIcon={<AddIcon />}
+                            >
+                              Add Field
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </SortableContext>
+                  </DroppableSection>
+                );
+              })
+            ) : searchQuery.trim() ? (
+              <Paper
+                elevation={0}
                 sx={{
-                  fontSize: 64,
-                  color: theme.palette.text.disabled,
-                  mb: 2,
+                  p: 4,
+                  textAlign: "center",
+                  borderRadius: 3,
+                  border: `2px dashed ${theme.palette.divider}`,
                 }}
-              />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No results found
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Try a different search term
-              </Typography>
-            </Paper>
-          ) : (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                textAlign: "center",
-                borderRadius: 3,
-                border: `2px dashed ${theme.palette.divider}`,
-              }}
-            >
-              <Typography variant="body1" color="text.secondary">
-                No sections yet. Add one below.
-              </Typography>
-            </Paper>
-          )}
+              >
+                <SearchIcon
+                  sx={{
+                    fontSize: 64,
+                    color: theme.palette.text.disabled,
+                    mb: 2,
+                  }}
+                />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No results found
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Try a different search term
+                </Typography>
+              </Paper>
+            ) : (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  textAlign: "center",
+                  borderRadius: 3,
+                  border: `2px dashed ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant="body1" color="text.secondary">
+                  No sections yet. Add one below.
+                </Typography>
+              </Paper>
+            )}
 
-          {isEditable && !searchQuery.trim() && (
-            <Button
-              variant="outlined"
-              size="large"
-              startIcon={<AddIcon />}
-              onClick={openSectionDialog}
-              color="primary"
-              sx={{
-                borderRadius: 2,
-                py: 1.5,
-                borderWidth: 2,
-                "&:hover": { borderWidth: 2 },
-              }}
-            >
-              Add Section
-            </Button>
-          )}
-        </Stack>
+            {isEditable && !searchQuery.trim() && (
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<AddIcon />}
+                onClick={openSectionDialog}
+                color="primary"
+                sx={{
+                  borderRadius: 2,
+                  py: 1.5,
+                  borderWidth: 2,
+                  "&:hover": { borderWidth: 2 },
+                }}
+              >
+                Add Section
+              </Button>
+            )}
+          </Stack>
 
-        <AddSectionDialog
-          open={sectionDialogOpen}
-          onClose={closeSectionDialog}
-          onAdd={handleAddSection}
-        />
+          <CreateDialog
+            open={sectionDialogOpen}
+            onClose={closeSectionDialog}
+            onCreate={handleAddSection}
+            title="Add Section"
+            label="Section Name"
+            actionButtonText="Add"
+          />
 
-        <RenameSectionDialog
-          open={renameDialogOpen}
-          onClose={closeRenameDialog}
-          onRename={(newSectionName) => {
-            if (sectionToRenameIndex !== null) {
-              handleSectionTitleChange(sectionToRenameIndex, newSectionName);
+          <RenameDialog
+            open={renameDialogOpen}
+            onClose={closeRenameDialog}
+            onRename={(newSectionName) => {
+              if (sectionToRenameIndex !== null) {
+                handleSectionTitleChange(sectionToRenameIndex, newSectionName);
+              }
+              closeRenameDialog();
+            }}
+            initialName={
+              sectionToRenameIndex !== null
+                ? editingSchema?.sections[sectionToRenameIndex]?.title || ""
+                : ""
             }
-            closeRenameDialog();
-          }}
-          initialName={
-            sectionToRenameIndex !== null
-              ? editingSchema?.sections[sectionToRenameIndex]?.title || ""
-              : ""
-          }
-        />
+            title="Rename Section"
+          />
 
-        <DeleteSectionDialog
-          open={deleteSectionDialogOpen}
-          onClose={closeDeleteSectionDialog}
-          onDelete={handleDeleteSection}
-          sectionName={
-            sectionToDeleteIndex !== null
-              ? editingSchema?.sections[sectionToDeleteIndex]?.title || null
-              : null
-          }
-        />
+          <DeleteDialog
+            open={deleteSectionDialogOpen}
+            onClose={closeDeleteSectionDialog}
+            onDelete={handleDeleteSection}
+            title={`Delete Section "${
+              sectionToDeleteIndex !== null
+                ? editingSchema?.sections[sectionToDeleteIndex]?.title || null
+                : null
+            }"?`}
+          >
+            Are you sure you want to delete this section and all of its fields?
+            This action cannot be undone.
+          </DeleteDialog>
 
-        <DuplicateNameDialog
-          open={duplicateNameDialogOpen}
-          onClose={closeDuplicateNameDialog}
-          errorMessage={duplicateNameError}
-        />
+          <DuplicateNameDialog
+            open={duplicateNameDialogOpen}
+            onClose={closeDuplicateNameDialog}
+            errorMessage={duplicateNameError}
+          />
 
-        <UnsavedSchemaChangesDialog
-          open={unsavedChangesDialogOpen}
-          onClose={closeUnsavedChangesDialog}
-          onDiscard={handleDiscardChanges}
-        />
+          <UnsavedSchemaChangesDialog
+            open={unsavedChangesDialogOpen}
+            onClose={closeUnsavedChangesDialog}
+            onDiscard={handleDiscardChanges}
+          />
 
-        <Snackbar
-          open={snackbarOpen}
-          onClose={() => setSnackbarOpen(false)}
-          slots={{ transition: Slide }}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-          slotProps={{
-            content: {
-              sx: {
-                backgroundColor: theme.palette.success.main,
-                color: theme.palette.success.contrastText,
-                fontFamily: theme.typography.subtitle1,
+          <Snackbar
+            open={snackbarOpen}
+            onClose={() => setSnackbarOpen(false)}
+            slots={{ transition: Slide }}
+            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+            slotProps={{
+              content: {
+                sx: {
+                  backgroundColor: theme.palette.success.main,
+                  color: theme.palette.success.contrastText,
+                  fontFamily: theme.typography.subtitle1,
+                },
               },
-            },
-          }}
-          message="Successfully saved schema"
-          autoHideDuration={1200}
-          action={
-            <IconButton
-              onClick={() => {
-                setSnackbarOpen(false);
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          }
-        />
+            }}
+            message="Successfully saved schema"
+            autoHideDuration={1200}
+            action={
+              <IconButton
+                onClick={() => {
+                  setSnackbarOpen(false);
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            }
+          />
 
-        <DragOverlay dropAnimation={null}>
-          {activeComponent ? (
-            <Box
-              sx={{
-                opacity: 0.9,
-                cursor: "grabbing",
-                transform: "rotate(2deg)",
-                boxShadow: theme.shadows[8],
-              }}
-            >
-              <EditableComponentCard
-                component={activeComponent}
-                onChange={() => {}}
-                editable={false}
-              />
-            </Box>
-          ) : null}
-        </DragOverlay>
-      </Box>
-    </DndContext>
+          <DragOverlay dropAnimation={undefined}>
+            {activeComponent ? (
+              <Box
+                sx={{
+                  opacity: 0.9,
+                  cursor: "grabbing",
+                  transform: "rotate(2deg)",
+                  boxShadow: theme.shadows[8],
+                }}
+              >
+                <EditableComponentCard
+                  component={activeComponent}
+                  onChange={() => {}}
+                  editable={false}
+                />
+              </Box>
+            ) : null}
+          </DragOverlay>
+        </Box>
+      </DndContext>
+
+      {editingSchema && (
+        <ShareDialog
+          mode="schema"
+          open={shareDialogOpen}
+          onClose={closeShareDialog}
+          schema={editingSchema}
+        />
+      )}
+
+      <Dialog open={warningDialogOpen}>
+        <DialogTitle>
+          <WarningIcon sx={{ mr: 1 }} color="warning" /> Warning
+        </DialogTitle>
+        <DialogContent>
+          Changing a schema could result in inaccurate data for the rest of your
+          team. If you are actively using this schema, make sure to share it
+          with ALL other devices being used. If you are not your teams lead
+          scouter, check with them before making any changes.
+        </DialogContent>
+        <DialogActions>
+          <Button variant="text" color="primary" onClick={closeWarningDialog}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleSaveSchema}
+          >
+            Continue Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

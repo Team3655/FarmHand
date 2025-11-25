@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import QrShareDialog from "../ui/dialog/QrShareDialog";
+import ShareDialog from "../ui/dialog/ShareDialog";
 import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import ArchiveIcon from "@mui/icons-material/ArchiveRounded";
 import UnarchiveIcon from "@mui/icons-material/UnarchiveRounded";
@@ -41,7 +41,6 @@ export default function ArchivePage() {
     [allQrCodes]
   );
 
-  // Use the combined hook - same as QR page!
   const qrManager = useQrManager({ qrCodes: archivedQrCodes });
 
   const handleMassUnarchive = async () => {
@@ -169,8 +168,8 @@ export default function ArchivePage() {
             </Stack>
 
             <QrGrid
-              validQrCodes={qrManager.validQrCodes}
-              invalidQrCodes={qrManager.invalidQrCodes}
+              validQrCodes={qrManager.filteredQrCodes}
+              invalidQrCodes={[]}
               selecting={qrManager.selecting}
               codeIsSelected={qrManager.codeIsSelected}
               onSelect={qrManager.updateSelectedCodes}
@@ -222,7 +221,8 @@ export default function ArchivePage() {
         </>
       )}
 
-      <QrShareDialog
+      <ShareDialog
+        mode="match"
         qrCodeData={activeQrCode!}
         open={qrDialogOpen}
         onClose={closeQrDialog}
@@ -241,7 +241,7 @@ export default function ArchivePage() {
         fullWidth
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
-          <UnarchiveIcon sx={{ mr: 1 }} />
+          <UnarchiveIcon sx={{ mr: 1 }} color="primary" />
           Unarchive QR Codes
         </DialogTitle>
         <DialogContent>
@@ -277,12 +277,12 @@ export default function ArchivePage() {
         fullWidth
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
-          <DeleteIcon sx={{ mr: 1 }} />
+          <DeleteIcon sx={{ mr: 1 }} color="error" />
           Delete QR Codes
         </DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to permanently delete{" "}
+            Are you sure you want to permanently delete
             {qrManager.selectedCodes.length} code
             {qrManager.selectedCodes.length !== 1 ? "s" : ""}? This action
             cannot be undone.
