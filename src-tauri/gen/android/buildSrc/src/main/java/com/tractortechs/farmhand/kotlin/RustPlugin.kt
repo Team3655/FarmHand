@@ -75,9 +75,11 @@ open class RustPlugin : Plugin<Project> {
                     }
 
                     buildTask.dependsOn(targetBuildTask)
-                    tasks["merge$targetArchCapitalized${profileCapitalized}JniLibFolders"].dependsOn(
-                        targetBuildTask
-                    )
+                    val mergeTaskName = "merge$targetArchCapitalized${profileCapitalized}JniLibFolders"
+                    val mergeTask = tasks.findByName(mergeTaskName)
+                    if (mergeTask != null) {
+                        mergeTask.dependsOn(targetBuildTask)
+                    }
                 }
             }
         }

@@ -66,6 +66,10 @@ jobs:
           # Clear any potential caches
           rm -rf node_modules/.cache
           rm -rf dist
+          # Clean Android build to remove any cached references to old architectures
+          cd src-tauri/gen/android
+          ./gradlew clean || true
+          cd ../../..
           # Temporarily modify tauri.conf.json to use build:ci script instead of build
           cd src-tauri
           # Use sed to replace the beforeBuildCommand
