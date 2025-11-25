@@ -72,7 +72,7 @@ jobs:
           sed -i.bak 's/"beforeBuildCommand": "npm run build"/"beforeBuildCommand": "npm run build:ci"/' tauri.conf.json
           cd ..
           # Now build the Android app
-          npm run tauri android build -- --release
+          npm run tauri android build --release
           # Restore the original config
           cd src-tauri
           mv tauri.conf.json.bak tauri.conf.json
