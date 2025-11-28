@@ -15,7 +15,7 @@ on:
         default: "android,windows"
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   # Extract version and changelog once
