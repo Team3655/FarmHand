@@ -6,14 +6,13 @@ name: Build and Release
 #   - ANDROID_KEY_ALIAS: Alias of the key in the keystore (e.g., "farmhand")
 #   - ANDROID_KEYSTORE_BASE64: Base64-encoded content of the .jks keystore file
 
-
 on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Platforms to build (comma-separated: android, windows, macos, linux). Leave empty for all.'
+        description: "Platforms to build (comma-separated: android, windows, macos, linux). Leave empty for all."
         required: false
-        default: 'android,windows'
+        default: "android,windows"
   push:
     branches:
       - dev
@@ -44,12 +43,12 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          
+
           # Extract numeric-only version (strip prerelease identifiers for MSI compatibility)
           # e.g., "0.2.0-beta" -> "0.2.0"
           VERSION_NUMERIC=$(echo "$VERSION" | sed -E 's/-[^0-9].*$//')
           echo "version_numeric=$VERSION_NUMERIC" >> $GITHUB_OUTPUT
-          
+
           if [[ "$VERSION" == *"-"* ]] || [[ "$VERSION" == *"beta"* ]] || [[ "$VERSION" == *"alpha"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "should_make_latest=false" >> $GITHUB_OUTPUT
@@ -170,7 +169,7 @@ jobs:
 
           VERSION="${{ needs.prepare.outputs.version }}"
           ARCH="${ARCH:-aarch64}"
-          
+
           if echo "$APK_PATH" | grep -q "arm64-v8a"; then
             ARCH="arm64-v8a"
           elif echo "$APK_PATH" | grep -q "armeabi-v7a"; then
@@ -182,7 +181,7 @@ jobs:
           NEW_APK_NAME="farmhand-v${VERSION}-${ARCH}.apk"
           NEW_APK_PATH="${GITHUB_WORKSPACE}/${NEW_APK_NAME}"
           cp "$APK_PATH" "$NEW_APK_PATH"
-          
+
           echo "path=$NEW_APK_PATH" >> $GITHUB_OUTPUT
           echo "name=$NEW_APK_NAME" >> $GITHUB_OUTPUT
 
@@ -221,10 +220,10 @@ jobs:
         run: |
           $version = "${{ needs.prepare.outputs.version }}"
           $target = "${{ matrix.target }}"
-          
+
           # Find all Windows installers in bundle directory
           $bundlePath = "src-tauri/target/$target/release/bundle"
-          
+
           if (-not (Test-Path $bundlePath)) {
             Write-Host "Bundle directory not found: $bundlePath"
             Write-Host "Checking release directory..."
@@ -234,37 +233,48 @@ jobs:
             }
             exit 1
           }
-          
+
           # Search for installers recursively
           $installers = Get-ChildItem -Path $bundlePath -Recurse -Include "*.exe","*.msi" -ErrorAction SilentlyContinue
-          
+
           if (-not $installers -or $installers.Count -eq 0) {
             Write-Host "No Windows installers found in $bundlePath"
             Write-Host "Searching for any files in bundle directory:"
             Get-ChildItem -Path $bundlePath -Recurse -File | Select-Object Name, FullName, Extension
             exit 1
           }
-          
+
           Write-Host "Found $($installers.Count) installer(s):"
           foreach ($installer in $installers) {
             Write-Host "  - $($installer.Name) ($([math]::Round($installer.Length / 1MB, 2)) MB)"
           }
-          
-          # Create artifacts directory
-          $artifactsDir = Join-Path $env:GITHUB_WORKSPACE "windows-artifacts"
-          New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
-          
+
+          # Create artifacts directory using relative path
+          $artifactsDir = "windows-artifacts"
+          $artifactsFullPath = Join-Path $env:GITHUB_WORKSPACE $artifactsDir
+          if (Test-Path $artifactsFullPath) {
+            Remove-Item -Path $artifactsFullPath -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          New-Item -ItemType Directory -Path $artifactsFullPath -Force | Out-Null
+
           foreach ($installer in $installers) {
             $ext = $installer.Extension
             # Check if it's a setup/installer (NSIS) or MSI
             $isSetup = if ($installer.Name -match "setup|installer|nsis") { "-setup" } else { "" }
             $newName = "farmhand-v${version}-x64${isSetup}${ext}"
-            $newPath = Join-Path $artifactsDir $newName
-            Copy-Item $installer.FullName $newPath
+            $newPath = Join-Path $artifactsFullPath $newName
+            Copy-Item $installer.FullName $newPath -Force
             Write-Host "Prepared: $newName"
           }
-          
-          Write-Host "artifact-dir=$artifactsDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          # Output artifact directory as simple relative path
+          Write-Host "artifact-dir=$artifactsDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Artifact directory (relative to workspace): $artifactsDir"
+          Write-Host "Files in artifact directory:"
+          Get-ChildItem -Path $artifactsFullPath | ForEach-Object {
+            Write-Host "  - $($_.Name)"
+          }
         shell: pwsh
         id: windows_artifacts
 
@@ -276,13 +286,38 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ steps.android_apk.outputs.path }}
           retention-days: 1
+          if-no-files-found: error
+
+      - name: Verify Windows artifacts before upload
+        if: matrix.platform == 'windows'
+        run: |
+          $artifactDir = "${{ steps.windows_artifacts.outputs.artifact-dir }}"
+          Write-Host "Artifact directory from output: '$artifactDir'"
+
+          if ([string]::IsNullOrWhiteSpace($artifactDir)) {
+            Write-Host "Artifact directory output is empty, using default: windows-artifacts"
+            $artifactDir = "windows-artifacts"
+          }
+
+          $fullPath = Join-Path $env:GITHUB_WORKSPACE $artifactDir
+          if (-not (Test-Path $fullPath)) {
+            Write-Host "ERROR: Artifact directory does not exist: $fullPath"
+            exit 1
+          }
+
+          $files = Get-ChildItem -Path $fullPath -File
+          Write-Host "Found $($files.Count) file(s) in $artifactDir:"
+          foreach ($file in $files) {
+            Write-Host "  - $($file.Name)"
+          }
+        shell: pwsh
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: ${{ steps.windows_artifacts.outputs.artifact-dir }}/*
+          path: windows-artifacts/**
           retention-days: 1
           if-no-files-found: error
 
@@ -304,14 +339,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: '*'
+          pattern: "*"
           merge-multiple: true
 
       - name: List downloaded artifacts
         run: |
           echo "Downloaded artifacts:"
           find artifacts -type f -exec ls -lh {} \; || true
-          
+
       - name: Verify artifacts exist
         run: |
           if [ -z "$(find artifacts -type f)" ]; then
@@ -333,4 +368,3 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
