@@ -193,39 +193,80 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Build Windows
+      - name: Build Windows 
         if: matrix.platform == 'windows'
-        run: npm run tauri build -- --target ${{ matrix.target }} --version ${{ needs.prepare.outputs.version_numeric }}
+        id: build_windows
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          # Don't create release, just build
+          # Omit tagName/releaseName to prevent release creation
+          args: --target ${{ matrix.target }} --version ${{ needs.prepare.outputs.version_numeric }}
+          # Don't upload artifacts automatically
+          uploadWorkflowArtifacts: false
+          tauriScript: npm run tauri --
 
-      - name: Prepare Windows artifacts
+      - name: Rename Windows artifacts
         if: matrix.platform == 'windows'
         run: |
           $version = "${{ needs.prepare.outputs.version }}"
+          $artifactPaths = "${{ steps.build_windows.outputs.artifactPaths }}"
           
-          # Find all Windows installers
-          $bundlePath = "src-tauri/target/${{ matrix.target }}/release/bundle"
-          $installers = Get-ChildItem -Path $bundlePath -Recurse -Include "*.exe","*.msi" -ErrorAction SilentlyContinue
-          
-          if (-not $installers) {
-            Write-Host "No Windows installers found in $bundlePath"
-            Get-ChildItem -Path $bundlePath -Recurse | Select-Object FullName
-            exit 1
+          if ([string]::IsNullOrWhiteSpace($artifactPaths)) {
+            Write-Host "No artifact paths found from tauri-action"
+            Write-Host "This might mean the build failed or no artifacts were generated"
+            Write-Host "Checking build output manually..."
+            
+            # Fallback: search for artifacts in expected location
+            $bundlePath = "src-tauri/target/${{ matrix.target }}/release/bundle"
+            if (Test-Path $bundlePath) {
+              Write-Host "Found bundle directory, searching for installers..."
+              $artifacts = Get-ChildItem -Path $bundlePath -Recurse -Include "*.exe","*.msi" -ErrorAction SilentlyContinue
+              if ($artifacts) {
+                Write-Host "Found $($artifacts.Count) installer(s) manually"
+              }
+            } else {
+              Write-Host "Bundle directory not found at: $bundlePath"
+              exit 1
+            }
+          } else {
+            Write-Host "Artifact paths from tauri-action: $artifactPaths"
+            
+            # Parse artifact paths (handle various separators: space, comma, newline)
+            $artifacts = @()
+            $paths = $artifactPaths -split '[,\s\n]+' | Where-Object { $_ -and $_.Trim() }
+            foreach ($path in $paths) {
+              $path = $path.Trim()
+              if ($path -and (Test-Path $path)) {
+                $artifacts += Get-Item $path
+              }
+            }
+            
+            if ($artifacts.Count -eq 0) {
+              Write-Host "No valid artifact paths found after parsing"
+              exit 1
+            }
           }
           
-          # Create artifacts directory
-          $artifactsDir = Join-Path $env:GITHUB_WORKSPACE "windows-artifacts"
-          New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
+          Write-Host "Found $($artifacts.Count) artifact(s) to rename"
           
-          foreach ($installer in $installers) {
-            $ext = $installer.Extension
-            $isSetup = if ($installer.Name -match "setup|installer|nsis") { "-setup" } else { "" }
+          # Create renamed artifacts directory
+          $renamedDir = Join-Path $env:GITHUB_WORKSPACE "windows-artifacts"
+          New-Item -ItemType Directory -Path $renamedDir -Force | Out-Null
+          
+          foreach ($artifact in $artifacts) {
+            $file = Get-Item $artifact
+            $ext = $file.Extension
+            $isSetup = if ($file.Name -match "setup|installer|nsis") { "-setup" } else { "" }
             $newName = "farmhand-v${version}-x64${isSetup}${ext}"
-            $newPath = Join-Path $artifactsDir $newName
-            Copy-Item $installer.FullName $newPath
-            Write-Host "Prepared: $newName"
+            $newPath = Join-Path $renamedDir $newName
+            Copy-Item $file.FullName $newPath
+            Write-Host "Renamed: $($file.Name) -> $newName"
           }
           
-          Write-Host "artifact-dir=$artifactsDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "artifact-dir=$renamedDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         shell: pwsh
         id: windows_artifacts
 
