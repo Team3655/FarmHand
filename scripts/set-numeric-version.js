@@ -16,8 +16,8 @@ if (!version) {
 }
 
 // Extract numeric-only version (strip prerelease identifiers)
-// e.g., "0.2.0-beta.1" -> "0.2.0.1"
-const numericVersion = version.replace(/-[a-z]+/g, "");
+// e.g., "0.2.0-beta.1" -> "0.2.0"
+const numericVersion = version.replace(/-[^0-9].*$/, '');
 
 console.log(`Setting numeric version: ${numericVersion} (from ${version})`);
 
