@@ -69,7 +69,7 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;26.1.10909125"
 
       - name: Build Android APK
-        run: npm run tauri android build
+        run: cargo tauri android build --apk --target aarch64
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
