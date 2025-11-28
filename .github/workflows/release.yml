@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      version_numeric: ${{ steps.version.outputs.version_numeric }}
       tag: ${{ steps.version.outputs.tag }}
       changelog: ${{ steps.changelog.outputs.changelog }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
@@ -43,6 +44,12 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract numeric-only version (strip prerelease identifiers for MSI compatibility)
+          # e.g., "0.2.0-beta" -> "0.2.0"
+          VERSION_NUMERIC=$(echo "$VERSION" | sed -E 's/-[^0-9].*$//')
+          echo "version_numeric=$VERSION_NUMERIC" >> $GITHUB_OUTPUT
+          
           if [[ "$VERSION" == *"-"* ]] || [[ "$VERSION" == *"beta"* ]] || [[ "$VERSION" == *"alpha"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "should_make_latest=false" >> $GITHUB_OUTPUT
@@ -51,6 +58,7 @@ jobs:
             echo "should_make_latest=true" >> $GITHUB_OUTPUT
           fi
           echo "Extracted version: $VERSION"
+          echo "Numeric version (for Windows MSI): $VERSION_NUMERIC"
 
       - name: Extract changelog for version
         id: changelog
@@ -187,7 +195,7 @@ jobs:
 
       - name: Build Windows
         if: matrix.platform == 'windows'
-        run: npm run tauri build -- --target ${{ matrix.target }}
+        run: npm run tauri build -- --target ${{ matrix.target }} --version ${{ needs.prepare.outputs.version_numeric }}
 
       - name: Prepare Windows artifacts
         if: matrix.platform == 'windows'
