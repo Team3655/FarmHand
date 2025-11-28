@@ -415,17 +415,17 @@ export default function Settings() {
                           <Box sx={{ flexShrink: 0 }}>
                             {renderSettingControl(setting)}
                           </Box>
-                          {setting.label === "Color Theme" &&
-                            selectedTheme?.meta?.flavorText && (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mt: 1.5 }}
-                              >
-                                {selectedTheme.meta.flavorText}
-                              </Typography>
-                            )}
                         </Stack>
+                        {setting.label === "Color Theme" &&
+                          selectedTheme?.meta?.flavorText && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 1.5 }}
+                            >
+                              {selectedTheme.meta.flavorText}
+                            </Typography>
+                          )}
                         {index < section.settings.length - 1 && (
                           <Divider
                             sx={{
