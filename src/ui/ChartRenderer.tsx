@@ -672,9 +672,91 @@ export default function ChartRenderer({
     // For other chart types (bar, pie, scatter), aggregate the values
     if (!groupedSimple) return [];
     const result: any[] = [];
+
+    // Special handling for bar charts with text/dropdown Y-axis: group by text values, subgroup by team number
+    if (chart.type === "bar" && (yFieldType === "text" || yFieldType === "dropdown")) {
+      // Find Team Number field index for subgrouping
+      let teamNumberIndex = -1;
+      absoluteIndex = 0;
+      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+        const section = schema.sections[sectionIdx];
+        for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
+          const field = section.fields[fieldIdx];
+          if (field.name === "Team Number") {
+            teamNumberIndex = absoluteIndex;
+            break;
+          }
+          absoluteIndex++;
+        }
+        if (teamNumberIndex !== -1) break;
+      }
+
+      // Group by text/dropdown values, with counts per team number
+      // Structure: Map<textValue, Map<teamNumber, count>>
+      const textValueTeamCounts = new Map<string, Map<string, number>>();
+      const allTeamNumbers = new Set<string>();
+
+      // Process all data items to build grouped structure
+      data.forEach((item) => {
+        if (!item || !item.decoded || !item.decoded.data) return;
+
+        // Get Y-axis text/dropdown value
+        if (yFieldIndex === -1) return;
+        const yValue = item.decoded.data[yFieldIndex];
+        if (yValue === undefined || yValue === null) return;
+        const textValue = String(yValue);
+
+        // Get team number for subgrouping
+        let teamNumber = "Unknown";
+        if (teamNumberIndex !== -1) {
+          const teamValue = item.decoded.data[teamNumberIndex];
+          if (teamValue !== undefined && teamValue !== null) {
+            teamNumber = String(teamValue);
+            allTeamNumbers.add(teamNumber);
+          }
+        }
+
+        // Initialize nested map structure
+        if (!textValueTeamCounts.has(textValue)) {
+          textValueTeamCounts.set(textValue, new Map<string, number>());
+        }
+        const teamCounts = textValueTeamCounts.get(textValue)!;
+
+        // Increment count for this team number within this text value
+        const currentCount = teamCounts.get(teamNumber) || 0;
+        teamCounts.set(teamNumber, currentCount + 1);
+      });
+
+      // Convert to grouped bar chart format
+      // Format: [{ category: "Success", "123": 3, "456": 2 }, { category: "Failed", "123": 1, "456": 2 }]
+      const sortedTeamNumbers = Array.from(allTeamNumbers).sort((a, b) => {
+        const aNum = Number(a);
+        const bNum = Number(b);
+        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+        return a.localeCompare(b);
+      });
+
+      textValueTeamCounts.forEach((teamCounts, textValue) => {
+        const rowData: any = {
+          category: textValue,
+          id: textValue,
+        };
+        
+        // Add count for each team number (0 if not present)
+        sortedTeamNumbers.forEach((teamNumber) => {
+          rowData[teamNumber] = teamCounts.get(teamNumber) || 0;
+        });
+
+        result.push(rowData);
+      });
+
+      // Store team numbers in result metadata for chart rendering
+      (result as any).__teamKeys = sortedTeamNumbers;
+    } else {
+      // Standard processing for numeric Y-axis or other chart types
       groupedSimple.forEach((values: (number | string)[], key: string) => {
-      let aggregatedValue = 0;
-      
+        let aggregatedValue = 0;
+        
         // Handle string/categorical values (text, dropdown)
         if (yFieldType === "text" || yFieldType === "dropdown") {
           // For categorical data, count is the most meaningful aggregation
@@ -686,34 +768,104 @@ export default function ChartRenderer({
           if (numericValues.length === 0) {
             aggregatedValue = 0;
           } else {
-      switch (chart.aggregation) {
-        case "sum":
+            switch (chart.aggregation) {
+              case "sum":
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
-          break;
-        case "average":
+                break;
+              case "average":
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
-          break;
-        case "count":
-          aggregatedValue = values.length;
-          break;
-        case "min":
+                break;
+              case "count":
+                aggregatedValue = values.length;
+                break;
+              case "min":
                 aggregatedValue = Math.min(...numericValues);
-          break;
-        case "max":
+                break;
+              case "max":
                 aggregatedValue = Math.max(...numericValues);
-          break;
+                break;
             }
           }
+        }
+
+        result.push({
+          id: key,
+          label: key,
+          value: aggregatedValue,
+          x: key,
+          y: aggregatedValue,
+        });
+      });
+    }
+
+    // Special handling for pie charts with text/dropdown Y-axis: create slices with team subgroups
+    if (chart.type === "pie" && (yFieldType === "text" || yFieldType === "dropdown")) {
+      // Find Team Number field index for subgrouping
+      let teamNumberIndex = -1;
+      absoluteIndex = 0;
+      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+        const section = schema.sections[sectionIdx];
+        for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
+          const field = section.fields[fieldIdx];
+          if (field.name === "Team Number") {
+            teamNumberIndex = absoluteIndex;
+            break;
+          }
+          absoluteIndex++;
+        }
+        if (teamNumberIndex !== -1) break;
       }
 
-      result.push({
-        id: key,
-        label: key,
-        value: aggregatedValue,
-        x: key,
-        y: aggregatedValue,
+      // Group by text/dropdown values, with counts per team number
+      const textValueTeamCounts = new Map<string, Map<string, number>>();
+
+      // Process all data items to build grouped structure
+      data.forEach((item) => {
+        if (!item || !item.decoded || !item.decoded.data) return;
+
+        // Get Y-axis text/dropdown value
+        if (yFieldIndex === -1) return;
+        const yValue = item.decoded.data[yFieldIndex];
+        if (yValue === undefined || yValue === null) return;
+        const textValue = String(yValue);
+
+        // Get team number for subgrouping
+        let teamNumber = "Unknown";
+        if (teamNumberIndex !== -1) {
+          const teamValue = item.decoded.data[teamNumberIndex];
+          if (teamValue !== undefined && teamValue !== null) {
+            teamNumber = String(teamValue);
+          }
+        }
+
+        // Initialize nested map structure
+        if (!textValueTeamCounts.has(textValue)) {
+          textValueTeamCounts.set(textValue, new Map<string, number>());
+        }
+        const teamCounts = textValueTeamCounts.get(textValue)!;
+
+        // Increment count for this team number within this text value
+        const currentCount = teamCounts.get(teamNumber) || 0;
+        teamCounts.set(teamNumber, currentCount + 1);
       });
-    });
+
+      // Convert to pie chart format with combined labels
+      // Format: [{ id: "Success - Team 123", label: "Success - Team 123", value: 3 }, ...]
+      const pieResult: any[] = [];
+      textValueTeamCounts.forEach((teamCounts, textValue) => {
+        teamCounts.forEach((count, teamNumber) => {
+          const combinedLabel = `${textValue} - Team ${teamNumber}`;
+          pieResult.push({
+            id: combinedLabel,
+            label: combinedLabel,
+            value: count,
+          });
+        });
+      });
+
+      // Replace result with pie chart data
+      return pieResult;
+    }
 
     // Sort result if sortMode is specified (for bar charts)
     if (chart.sortMode && chart.type === "bar") {
@@ -894,28 +1046,64 @@ export default function ChartRenderer({
 
   switch (chart.type) {
     case "bar":
+      // Check if this is a grouped bar chart (text/dropdown Y-axis with team subgroups)
+      const originalProcessedData = processedData;
+      const isGroupedBar = Array.isArray(originalProcessedData) && 
+                           originalProcessedData.length > 0 && 
+                           (originalProcessedData as any).__teamKeys && 
+                           Array.isArray((originalProcessedData as any).__teamKeys) &&
+                           (originalProcessedData as any).__teamKeys.length > 0;
+
+      const teamKeys = isGroupedBar ? (originalProcessedData as any).__teamKeys : [];
+      const barData = isGroupedBar ? originalProcessedData.filter((item: any) => item.category !== undefined) : originalProcessedData;
+
       return (
         <Box sx={chartContainerSx}>
         <ResponsiveBar
-          data={processedData}
-          keys={["value"]}
-          indexBy="id"
-          margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
+          data={barData}
+          keys={isGroupedBar ? teamKeys : ["value"]}
+          indexBy={isGroupedBar ? "category" : "id"}
+          groupMode={isGroupedBar ? "grouped" : undefined}
+          margin={{ top: 20, right: isGroupedBar ? 140 : 20, bottom: 50, left: 60 }}
           padding={0.3}
           colors={chartColors}
           theme={chartTheme}
           borderRadius={borderRadius}
           axisBottom={{
             tickRotation: -45,
-            legend: chart.xAxis,
+            legend: isGroupedBar ? (chart.yAxis || "Category") : chart.xAxis,
             legendPosition: "middle",
             legendOffset: 40,
           }}
           axisLeft={{
-            legend: chart.yAxis || "Value",
+            legend: isGroupedBar ? "Count" : (chart.yAxis || "Value"),
             legendPosition: "middle",
             legendOffset: -50,
           }}
+          legends={isGroupedBar ? [
+            {
+              dataFrom: "keys",
+              anchor: "bottom-right",
+              direction: "column",
+              justify: false,
+              translateX: 120,
+              translateY: 0,
+              itemsSpacing: 2,
+              itemWidth: 100,
+              itemHeight: 20,
+              itemDirection: "left-to-right",
+              itemOpacity: 0.85,
+              symbolSize: 12,
+              effects: [
+                {
+                  on: "hover",
+                  style: {
+                    itemOpacity: 1,
+                  },
+                },
+              ],
+            },
+          ] : undefined}
         />
         </Box>
       );
