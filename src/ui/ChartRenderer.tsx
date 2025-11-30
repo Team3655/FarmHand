@@ -90,8 +90,58 @@ export default function ChartRenderer({
 
     if (xFieldIndex === -1) return [];
 
-    // Group data by X-axis value
-    const grouped = new Map<string, number[]>();
+    // For line charts, we need to determine what field to group by for multiple lines
+    // Typically: X-axis = Match Number, group by Team Number to create one line per team
+    let groupByFieldIndex = -1;
+    let groupByFieldName = "";
+    
+    if (chart.type === "line" && chart.groupBy) {
+      // Use explicit groupBy field if specified
+      const groupByParts = chart.groupBy.split(" - ");
+      if (groupByParts.length === 2) {
+        groupByFieldName = groupByParts[1];
+        // Find the field index for groupBy
+        absoluteIndex = 0;
+        for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+          const section = schema.sections[sectionIdx];
+          for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
+            const field = section.fields[fieldIdx];
+            if (field.name === groupByFieldName && (section.title === groupByParts[0] || !groupByParts[0])) {
+              groupByFieldIndex = absoluteIndex;
+              break;
+            }
+            absoluteIndex++;
+          }
+          if (groupByFieldIndex !== -1) break;
+        }
+      }
+    } else if (chart.type === "line" && xFieldName === "Match Number") {
+      // Auto-detect: if X-axis is Match Number, group by Team Number
+      absoluteIndex = 0;
+      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+        const section = schema.sections[sectionIdx];
+        for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
+          const field = section.fields[fieldIdx];
+          if (field.name === "Team Number") {
+            groupByFieldIndex = absoluteIndex;
+            groupByFieldName = "Team Number";
+            break;
+          }
+          absoluteIndex++;
+        }
+        if (groupByFieldIndex !== -1) break;
+      }
+    }
+
+    // Group data - for line charts with grouping, use nested map; otherwise simple map
+    let groupedByLine: Map<string, Map<string, number[]>> | null = null;
+    let groupedSimple: Map<string, number[]> | null = null;
+
+    if (chart.type === "line" && groupByFieldIndex !== -1) {
+      groupedByLine = new Map<string, Map<string, number[]>>();
+    } else {
+      groupedSimple = new Map<string, number[]>();
+    }
 
     data.forEach((item) => {
       if (!item || !item.decoded || !item.decoded.data) return;
@@ -112,21 +162,118 @@ export default function ChartRenderer({
         }
       }
 
-      if (!grouped.has(xKey)) {
-        grouped.set(xKey, []);
+      if (chart.type === "line" && groupByFieldIndex !== -1 && groupedByLine) {
+        // For line charts with grouping: group by team/groupBy, then by X-axis value
+        const groupValue = item.decoded.data[groupByFieldIndex];
+        if (groupValue === undefined || groupValue === null) return;
+        const groupKey = String(groupValue);
+        
+        if (!groupedByLine.has(groupKey)) {
+          groupedByLine.set(groupKey, new Map<string, number[]>());
+        }
+        const groupMap = groupedByLine.get(groupKey)!;
+        
+        if (!groupMap.has(xKey)) {
+          groupMap.set(xKey, []);
+        }
+        groupMap.get(xKey)!.push(yValue);
+      } else if (groupedSimple) {
+        // For other chart types or line charts without grouping: group by X-axis value
+        if (!groupedSimple.has(xKey)) {
+          groupedSimple.set(xKey, []);
+        }
+        groupedSimple.get(xKey)!.push(yValue);
       }
-      grouped.get(xKey)!.push(yValue);
     });
+
+    // Handle line charts - create one line per group (team)
+    // Format: [{ id: "123", data: [{x: 1, y: 10}, {x: 2, y: 15}] }, { id: "456", data: [...] }]
+    if (chart.type === "line" && groupByFieldIndex !== -1 && groupedByLine) {
+      const result: Array<{ id: string; data: Array<{ x: string | number; y: number }> }> = [];
+      
+      groupedByLine.forEach((xValueMap, groupKey) => {
+        const lineData: Array<{ x: string | number; y: number }> = [];
+        
+        // For each X-axis value (e.g., match number), aggregate the Y-values
+        xValueMap.forEach((yValues, xKey) => {
+          let aggregatedValue = 0;
+          
+          switch (chart.aggregation || "average") {
+            case "sum":
+              aggregatedValue = yValues.reduce((a, b) => a + b, 0);
+              break;
+            case "average":
+              aggregatedValue = yValues.reduce((a, b) => a + b, 0) / yValues.length;
+              break;
+            case "count":
+              aggregatedValue = yValues.length;
+              break;
+            case "min":
+              aggregatedValue = Math.min(...yValues);
+              break;
+            case "max":
+              aggregatedValue = Math.max(...yValues);
+              break;
+          }
+          
+          // Try to convert X-key to number if possible (for proper sorting)
+          const xNum = Number(xKey);
+          const xValue = !isNaN(xNum) && isFinite(xNum) ? xNum : xKey;
+          
+          lineData.push({
+            x: xValue,
+            y: aggregatedValue,
+          });
+        });
+        
+        // Sort line data by X value
+        lineData.sort((a, b) => {
+          const aNum = typeof a.x === 'number' ? a.x : Number(a.x);
+          const bNum = typeof b.x === 'number' ? b.x : Number(b.x);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return String(a.x).localeCompare(String(b.x));
+        });
+        
+        if (lineData.length > 0) {
+          result.push({
+            id: groupKey,
+            data: lineData,
+          });
+        }
+      });
+      
+      // Sort lines if sortMode is specified
+      if (chart.sortMode && result.length > 0) {
+        if (chart.sortMode === "ascending") {
+          result.sort((a, b) => {
+            const aAvg = a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
+            const bAvg = b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
+            return aAvg - bAvg;
+          });
+        } else if (chart.sortMode === "descending") {
+          result.sort((a, b) => {
+            const aAvg = a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
+            const bAvg = b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
+            return bAvg - aAvg;
+          });
+        }
+      }
+      
+      return result;
+    }
 
     // Handle boxplot differently - it needs flat array of individual data points
     // Format: [{ group: "123", value: 1 }, { group: "123", value: 2 }, ...]
     if (chart.type === "boxplot") {
+      if (!groupedSimple) return [];
       const result: Array<{ group: string; value: number }> = [];
       let allValues: number[] = []; // Collect all values for min/max calculation
 
-      grouped.forEach((values, key) => {
+      groupedSimple.forEach((values: number[], key: string) => {
         // Filter out invalid values and keep all raw values
-        values.forEach((v) => {
+        values.forEach((v: number) => {
           const num = typeof v === 'number' ? v : Number(v);
           if (!isNaN(num) && isFinite(num) && num !== null && num !== undefined) {
             result.push({
@@ -194,11 +341,67 @@ export default function ChartRenderer({
       return result;
     }
 
-    // For other chart types, aggregate the values
-    const result: any[] = [];
-    grouped.forEach((values, key) => {
-      let aggregatedValue = 0;
+    // For line charts without grouping, create a single line
+    if (chart.type === "line" && groupByFieldIndex === -1 && groupedSimple) {
+      const result: Array<{ id: string; data: Array<{ x: string | number; y: number }> }> = [];
+      const lineData: Array<{ x: string | number; y: number }> = [];
+      
+      groupedSimple.forEach((values, xKey) => {
+        let aggregatedValue = 0;
+        
+        switch (chart.aggregation || "average") {
+          case "sum":
+            aggregatedValue = values.reduce((a, b) => a + b, 0);
+            break;
+          case "average":
+            aggregatedValue = values.reduce((a, b) => a + b, 0) / values.length;
+            break;
+          case "count":
+            aggregatedValue = values.length;
+            break;
+          case "min":
+            aggregatedValue = Math.min(...values);
+            break;
+          case "max":
+            aggregatedValue = Math.max(...values);
+            break;
+        }
+        
+        const xNum = Number(xKey);
+        const xValue = !isNaN(xNum) && isFinite(xNum) ? xNum : xKey;
+        
+        lineData.push({
+          x: xValue,
+          y: aggregatedValue,
+        });
+      });
+      
+      // Sort by X value
+      lineData.sort((a, b) => {
+        const aNum = typeof a.x === 'number' ? a.x : Number(a.x);
+        const bNum = typeof b.x === 'number' ? b.x : Number(b.x);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+        return String(a.x).localeCompare(String(b.x));
+      });
+      
+      if (lineData.length > 0) {
+        result.push({
+          id: chart.name || "data",
+          data: lineData,
+        });
+      }
+      
+      return result;
+    }
 
+    // For other chart types (bar, pie, scatter), aggregate the values
+    if (!groupedSimple) return [];
+    const result: any[] = [];
+    groupedSimple.forEach((values, key) => {
+      let aggregatedValue = 0;
+      
       switch (chart.aggregation) {
         case "sum":
           aggregatedValue = values.reduce((a, b) => a + b, 0);
@@ -316,15 +519,10 @@ export default function ChartRenderer({
       return (
         <Box sx={chartContainerSx}>
         <ResponsiveLine
-          data={[
-            {
-              id: chart.name,
-              data: processedData.map((d) => ({ x: d.x, y: d.y })),
-            },
-          ]}
-          margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
-          xScale={{ type: "point" }}
-          yScale={{ type: "linear" }}
+          data={processedData}
+          margin={{ top: 20, right: 110, bottom: 50, left: 60 }}
+          xScale={{ type: "linear", min: "auto", max: "auto" }}
+          yScale={{ type: "linear", min: "auto", max: "auto" }}
           curve="monotoneX"
           colors={{ scheme: "nivo" }}
           theme={chartTheme}
@@ -341,6 +539,19 @@ export default function ChartRenderer({
           pointSize={8}
           pointBorderWidth={2}
           pointBorderColor={{ from: "serieColor" }}
+          enableSlices={false}
+          useMesh={true}
+          enableTouchCrosshair={true}
+          legends={Array.isArray(processedData) && processedData.length > 1 && processedData[0]?.id ? [
+            {
+              anchor: "bottom-right",
+              direction: "column",
+              translateX: 100,
+              itemWidth: 80,
+              itemHeight: 20,
+              symbolShape: "circle",
+            },
+          ] : []}
         />
         </Box>
       );
