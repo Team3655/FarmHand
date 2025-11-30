@@ -8,36 +8,19 @@ import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { ResponsiveBoxPlot } from "@nivo/boxplot";
 import { ResponsiveHeatMap } from "@nivo/heatmap";
-
-/**
- * Parse timer string to numeric seconds
- * Formats: "5.0" (5 seconds) or "2:30.0" (2 minutes 30 seconds)
- */
-const parseTimerToSeconds = (timerString: string | undefined | null): number | null => {
-  if (!timerString || typeof timerString !== "string") {
-    return null;
-  }
-  
-  if (timerString.includes(":")) {
-    const parts = timerString.split(":");
-    const minutes = parseInt(parts[0], 10) || 0;
-    const seconds = parseFloat(parts[1]) || 0;
-    return minutes * 60 + seconds;
-  }
-  
-  const seconds = parseFloat(timerString) || 0;
-  return seconds;
-};
+import { parseTime } from "../utils/GeneralUtils";
 
 /**
  * Extract numeric value from grid string format: "3x3:[1,2,3]"
  * Returns count of active cells
  */
-const parseGridToNumber = (gridString: string | undefined | null): number | null => {
+const parseGridToNumber = (
+  gridString: string | undefined | null
+): number | null => {
   if (!gridString || typeof gridString !== "string") {
     return null;
   }
-  
+
   const match = gridString.match(/\[(.*)\]/);
   if (match && match[1]) {
     if (match[1].trim() === "") return 0;
@@ -54,22 +37,24 @@ const parseGridToNumber = (gridString: string | undefined | null): number | null
  * Parse grid string format: "rowsxcols:[checked IDs]"
  * Returns object with dimensions and checked cell indices
  */
-const parseGridData = (gridString: string | undefined | null): { rows: number; cols: number; checkedIndices: number[] } | null => {
+const parseGridData = (
+  gridString: string | undefined | null
+): { rows: number; cols: number; checkedIndices: number[] } | null => {
   if (!gridString || typeof gridString !== "string") {
     return null;
   }
-  
+
   // Extract dimensions: "3x3:[1,2,3]" -> rows=3, cols=3
   const dimMatch = gridString.match(/^(\d+)x(\d+):/);
   if (!dimMatch) return null;
-  
+
   const rows = parseInt(dimMatch[1], 10);
   const cols = parseInt(dimMatch[2], 10);
-  
+
   // Extract checked indices: "[1,2,3]" -> [1, 2, 3]
   const indicesMatch = gridString.match(/\[(.*)\]/);
   const checkedIndices: number[] = [];
-  
+
   if (indicesMatch && indicesMatch[1]) {
     if (indicesMatch[1].trim() !== "") {
       const indices = indicesMatch[1]
@@ -79,7 +64,7 @@ const parseGridData = (gridString: string | undefined | null): { rows: number; c
       checkedIndices.push(...indices);
     }
   }
-  
+
   return { rows, cols, checkedIndices };
 };
 
@@ -183,7 +168,7 @@ export default function ChartRenderer({
     // Typically: X-axis = Match Number, group by Team Number to create one line per team
     let groupByFieldIndex = -1;
     let groupByFieldName = "";
-    
+
     if (chart.type === "line" && chart.groupBy) {
       // Use explicit groupBy field if specified
       const groupByParts = chart.groupBy.split(" - ");
@@ -191,11 +176,18 @@ export default function ChartRenderer({
         groupByFieldName = groupByParts[1];
         // Find the field index for groupBy
         absoluteIndex = 0;
-        for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+        for (
+          let sectionIdx = 0;
+          sectionIdx < schema.sections.length;
+          sectionIdx++
+        ) {
           const section = schema.sections[sectionIdx];
           for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
             const field = section.fields[fieldIdx];
-            if (field.name === groupByFieldName && (section.title === groupByParts[0] || !groupByParts[0])) {
+            if (
+              field.name === groupByFieldName &&
+              (section.title === groupByParts[0] || !groupByParts[0])
+            ) {
               groupByFieldIndex = absoluteIndex;
               break;
             }
@@ -207,7 +199,11 @@ export default function ChartRenderer({
     } else if (chart.type === "line" && xFieldName === "Match Number") {
       // Auto-detect: if X-axis is Match Number, group by Team Number
       absoluteIndex = 0;
-      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+      for (
+        let sectionIdx = 0;
+        sectionIdx < schema.sections.length;
+        sectionIdx++
+      ) {
         const section = schema.sections[sectionIdx];
         for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
           const field = section.fields[fieldIdx];
@@ -224,7 +220,8 @@ export default function ChartRenderer({
 
     // Group data - for line charts with grouping, use nested map; otherwise simple map
     // Note: arrays can contain strings for text/dropdown fields, but will be converted to numbers where needed
-    let groupedByLine: Map<string, Map<string, (number | string)[]>> | null = null;
+    let groupedByLine: Map<string, Map<string, (number | string)[]>> | null =
+      null;
     let groupedSimple: Map<string, (number | string)[]> | null = null;
 
     if (chart.type === "line" && groupByFieldIndex !== -1) {
@@ -253,7 +250,7 @@ export default function ChartRenderer({
           // Handle different field types
           if (yFieldType === "timer") {
             // Convert timer string to seconds
-            const seconds = parseTimerToSeconds(String(rawYValue));
+            const seconds = parseTime(String(rawYValue));
             if (seconds !== null) {
               yValue = seconds;
             }
@@ -285,12 +282,12 @@ export default function ChartRenderer({
         const groupValue = item.decoded.data[groupByFieldIndex];
         if (groupValue === undefined || groupValue === null) return;
         const groupKey = String(groupValue);
-        
+
         if (!groupedByLine.has(groupKey)) {
           groupedByLine.set(groupKey, new Map<string, number[]>());
         }
         const groupMap = groupedByLine.get(groupKey)!;
-        
+
         if (!groupMap.has(xKey)) {
           groupMap.set(xKey, []);
         }
@@ -312,17 +309,17 @@ export default function ChartRenderer({
       if (yFieldType !== "grid" || xFieldIndex === -1 || yFieldIndex === -1) {
         return [];
       }
-      
+
       // First, determine grid dimensions from the data or schema
       let gridRows = 3; // default
       let gridCols = 3; // default
-      
+
       // Try to get dimensions from the first grid data item
       for (const item of data) {
         if (!item || !item.decoded || !item.decoded.data) continue;
         const gridValue = item.decoded.data[yFieldIndex];
         if (gridValue === undefined || gridValue === null) continue;
-        
+
         const gridData = parseGridData(String(gridValue));
         if (gridData) {
           gridRows = gridData.rows;
@@ -330,14 +327,14 @@ export default function ChartRenderer({
           break; // Use dimensions from first valid grid
         }
       }
-      
+
       // If we couldn't get dimensions from data, try to get from schema field props
-      if ((gridRows === 3 && gridCols === 3) && schema) {
+      if (gridRows === 3 && gridCols === 3 && schema) {
         const yParts = chart.yAxis?.split(" - ");
         if (yParts && yParts.length === 2) {
           for (const section of schema.sections) {
             if (section.title === yParts[0]) {
-              const field = section.fields.find(f => f.name === yParts[1]);
+              const field = section.fields.find((f) => f.name === yParts[1]);
               if (field && field.type === "grid" && field.props) {
                 gridRows = field.props.rows || 3;
                 gridCols = field.props.cols || 3;
@@ -347,7 +344,7 @@ export default function ChartRenderer({
           }
         }
       }
-      
+
       // Generate all possible cell positions for the full grid
       const allCellPositions: string[] = [];
       for (let row = 0; row < gridRows; row++) {
@@ -355,88 +352,96 @@ export default function ChartRenderer({
           allCellPositions.push(`${row},${col}`);
         }
       }
-      
+
       // Sort cell positions (already sorted by row then column)
       const sortedCellPositions = allCellPositions.sort((a, b) => {
-        const [aRow, aCol] = a.split(',').map(Number);
-        const [bRow, bCol] = b.split(',').map(Number);
+        const [aRow, aCol] = a.split(",").map(Number);
+        const [bRow, bCol] = b.split(",").map(Number);
         if (aRow !== bRow) return aRow - bRow;
         return aCol - bCol;
       });
-      
+
       // For heatmaps with grid data, we need to parse grid cells and group by X-axis
       const heatmapData = new Map<string, Map<string, number>>(); // groupKey -> cellPosition -> count
-      
+
       data.forEach((item) => {
         if (!item || !item.decoded || !item.decoded.data) return;
-        
+
         // Get X-axis value (grouping key, e.g., team number)
         const xValue = item.decoded.data[xFieldIndex];
         if (xValue === undefined || xValue === null) return;
         const groupKey = String(xValue);
-        
+
         // Get grid data
         if (yFieldIndex === -1) return;
         const gridValue = item.decoded.data[yFieldIndex];
         if (gridValue === undefined || gridValue === null) return;
-        
+
         const gridData = parseGridData(String(gridValue));
         if (!gridData) return;
-        
+
         // Initialize group if needed
         if (!heatmapData.has(groupKey)) {
           heatmapData.set(groupKey, new Map<string, number>());
         }
         const groupMap = heatmapData.get(groupKey)!;
-        
+
         // Count checked cells by position
         gridData.checkedIndices.forEach((cellIndex) => {
           const cellPos = indexToCoordinate(cellIndex, gridData.cols);
-          
+
           const currentCount = groupMap.get(cellPos) || 0;
           groupMap.set(cellPos, currentCount + 1);
         });
       });
-      
+
       // Convert to heatmap format - include ALL cells
-      const result: Array<{ id: string; data: Array<{ x: string; y: number }> }> = [];
-      
+      const result: Array<{
+        id: string;
+        data: Array<{ x: string; y: number }>;
+      }> = [];
+
       heatmapData.forEach((cellCounts, groupKey) => {
         // Include all cell positions, with 0 for unchecked cells
         const cellData = sortedCellPositions.map((cellPos) => ({
           x: cellPos,
           y: cellCounts.get(cellPos) || 0, // 0 for unchecked, count for checked
         }));
-        
+
         result.push({
           id: groupKey,
           data: cellData,
         });
       });
-      
+
       return result;
     }
 
     // Handle line charts - create one line per group (team)
     // Format: [{ id: "123", data: [{x: 1, y: 10}, {x: 2, y: 15}] }, { id: "456", data: [...] }]
     if (chart.type === "line" && groupByFieldIndex !== -1 && groupedByLine) {
-      const result: Array<{ id: string; data: Array<{ x: string | number; y: number }> }> = [];
-      
+      const result: Array<{
+        id: string;
+        data: Array<{ x: string | number; y: number }>;
+      }> = [];
+
       groupedByLine.forEach((xValueMap, groupKey) => {
         const lineData: Array<{ x: string | number; y: number }> = [];
-        
+
         // For each X-axis value (e.g., match number), aggregate the Y-values
         xValueMap.forEach((yValues, xKey) => {
           let aggregatedValue = 0;
-          
+
           // Handle string/categorical values (text, dropdown)
           if (yFieldType === "text" || yFieldType === "dropdown") {
             // For categorical data, count is the most meaningful aggregation
             aggregatedValue = yValues.length;
           } else {
             // For numeric values, use specified aggregation
-            const numericValues = yValues.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
-            
+            const numericValues = yValues
+              .map((v) => (typeof v === "number" ? v : Number(v)))
+              .filter((v) => !isNaN(v));
+
             if (numericValues.length === 0) {
               aggregatedValue = 0;
             } else {
@@ -445,7 +450,9 @@ export default function ChartRenderer({
                   aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
                   break;
                 case "average":
-                  aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                  aggregatedValue =
+                    numericValues.reduce((a, b) => a + b, 0) /
+                    numericValues.length;
                   break;
                 case "count":
                   aggregatedValue = yValues.length;
@@ -459,27 +466,27 @@ export default function ChartRenderer({
               }
             }
           }
-          
+
           // Try to convert X-key to number if possible (for proper sorting)
           const xNum = Number(xKey);
           const xValue = !isNaN(xNum) && isFinite(xNum) ? xNum : xKey;
-          
+
           lineData.push({
             x: xValue,
             y: aggregatedValue,
           });
         });
-        
+
         // Sort line data by X value
         lineData.sort((a, b) => {
-          const aNum = typeof a.x === 'number' ? a.x : Number(a.x);
-          const bNum = typeof b.x === 'number' ? b.x : Number(b.x);
+          const aNum = typeof a.x === "number" ? a.x : Number(a.x);
+          const bNum = typeof b.x === "number" ? b.x : Number(b.x);
           if (!isNaN(aNum) && !isNaN(bNum)) {
             return aNum - bNum;
           }
           return String(a.x).localeCompare(String(b.x));
         });
-        
+
         if (lineData.length > 0) {
           result.push({
             id: groupKey,
@@ -487,24 +494,28 @@ export default function ChartRenderer({
           });
         }
       });
-      
+
       // Sort lines if sortMode is specified
       if (chart.sortMode && result.length > 0) {
         if (chart.sortMode === "ascending") {
           result.sort((a, b) => {
-            const aAvg = a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
-            const bAvg = b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
+            const aAvg =
+              a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
+            const bAvg =
+              b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
             return aAvg - bAvg;
           });
         } else if (chart.sortMode === "descending") {
           result.sort((a, b) => {
-            const aAvg = a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
-            const bAvg = b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
+            const aAvg =
+              a.data.reduce((sum, d) => sum + d.y, 0) / a.data.length;
+            const bAvg =
+              b.data.reduce((sum, d) => sum + d.y, 0) / b.data.length;
             return bAvg - aAvg;
           });
         }
       }
-      
+
       return result;
     }
 
@@ -519,10 +530,10 @@ export default function ChartRenderer({
         // Filter out invalid values and keep all raw values
         values.forEach((v: number | string) => {
           let num: number;
-          
+
           // Convert based on field type
           if (yFieldType === "timer") {
-            const seconds = parseTimerToSeconds(String(v));
+            const seconds = parseTime(String(v));
             if (seconds === null) return;
             num = seconds;
           } else if (yFieldType === "grid") {
@@ -532,10 +543,15 @@ export default function ChartRenderer({
           } else if (yFieldType === "checkbox") {
             num = Boolean(v) ? 1 : 0;
           } else {
-            num = typeof v === 'number' ? v : Number(v);
+            num = typeof v === "number" ? v : Number(v);
           }
-          
-          if (!isNaN(num) && isFinite(num) && num !== null && num !== undefined) {
+
+          if (
+            !isNaN(num) &&
+            isFinite(num) &&
+            num !== null &&
+            num !== undefined
+          ) {
             result.push({
               group: String(key),
               value: num,
@@ -603,20 +619,25 @@ export default function ChartRenderer({
 
     // For line charts without grouping, create a single line
     if (chart.type === "line" && groupByFieldIndex === -1 && groupedSimple) {
-      const result: Array<{ id: string; data: Array<{ x: string | number; y: number }> }> = [];
+      const result: Array<{
+        id: string;
+        data: Array<{ x: string | number; y: number }>;
+      }> = [];
       const lineData: Array<{ x: string | number; y: number }> = [];
-      
+
       groupedSimple.forEach((values, xKey) => {
         let aggregatedValue = 0;
-        
+
         // Handle string/categorical values (text, dropdown)
         if (yFieldType === "text" || yFieldType === "dropdown") {
           // For categorical data, count is the most meaningful aggregation
           aggregatedValue = values.length;
         } else {
           // For numeric values, use specified aggregation
-          const numericValues = values.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
-          
+          const numericValues = values
+            .map((v) => (typeof v === "number" ? v : Number(v)))
+            .filter((v) => !isNaN(v));
+
           if (numericValues.length === 0) {
             aggregatedValue = 0;
           } else {
@@ -625,7 +646,9 @@ export default function ChartRenderer({
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
                 break;
               case "average":
-                aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                aggregatedValue =
+                  numericValues.reduce((a, b) => a + b, 0) /
+                  numericValues.length;
                 break;
               case "count":
                 aggregatedValue = values.length;
@@ -639,33 +662,33 @@ export default function ChartRenderer({
             }
           }
         }
-        
+
         const xNum = Number(xKey);
         const xValue = !isNaN(xNum) && isFinite(xNum) ? xNum : xKey;
-        
+
         lineData.push({
           x: xValue,
           y: aggregatedValue,
         });
       });
-      
+
       // Sort by X value
       lineData.sort((a, b) => {
-        const aNum = typeof a.x === 'number' ? a.x : Number(a.x);
-        const bNum = typeof b.x === 'number' ? b.x : Number(b.x);
+        const aNum = typeof a.x === "number" ? a.x : Number(a.x);
+        const bNum = typeof b.x === "number" ? b.x : Number(b.x);
         if (!isNaN(aNum) && !isNaN(bNum)) {
           return aNum - bNum;
         }
         return String(a.x).localeCompare(String(b.x));
       });
-      
+
       if (lineData.length > 0) {
         result.push({
           id: chart.name || "data",
           data: lineData,
         });
       }
-      
+
       return result;
     }
 
@@ -674,11 +697,18 @@ export default function ChartRenderer({
     const result: any[] = [];
 
     // Special handling for bar charts with text/dropdown Y-axis: group by text values, subgroup by team number
-    if (chart.type === "bar" && (yFieldType === "text" || yFieldType === "dropdown")) {
+    if (
+      chart.type === "bar" &&
+      (yFieldType === "text" || yFieldType === "dropdown")
+    ) {
       // Find Team Number field index for subgrouping
       let teamNumberIndex = -1;
       absoluteIndex = 0;
-      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+      for (
+        let sectionIdx = 0;
+        sectionIdx < schema.sections.length;
+        sectionIdx++
+      ) {
         const section = schema.sections[sectionIdx];
         for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
           const field = section.fields[fieldIdx];
@@ -741,7 +771,7 @@ export default function ChartRenderer({
           category: textValue,
           id: textValue,
         };
-        
+
         // Add count for each team number (0 if not present)
         sortedTeamNumbers.forEach((teamNumber) => {
           rowData[teamNumber] = teamCounts.get(teamNumber) || 0;
@@ -756,15 +786,17 @@ export default function ChartRenderer({
       // Standard processing for numeric Y-axis or other chart types
       groupedSimple.forEach((values: (number | string)[], key: string) => {
         let aggregatedValue = 0;
-        
+
         // Handle string/categorical values (text, dropdown)
         if (yFieldType === "text" || yFieldType === "dropdown") {
           // For categorical data, count is the most meaningful aggregation
           aggregatedValue = values.length;
         } else {
           // For numeric values, use specified aggregation
-          const numericValues = values.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
-          
+          const numericValues = values
+            .map((v) => (typeof v === "number" ? v : Number(v)))
+            .filter((v) => !isNaN(v));
+
           if (numericValues.length === 0) {
             aggregatedValue = 0;
           } else {
@@ -773,7 +805,9 @@ export default function ChartRenderer({
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
                 break;
               case "average":
-                aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                aggregatedValue =
+                  numericValues.reduce((a, b) => a + b, 0) /
+                  numericValues.length;
                 break;
               case "count":
                 aggregatedValue = values.length;
@@ -799,11 +833,18 @@ export default function ChartRenderer({
     }
 
     // Special handling for pie charts with text/dropdown Y-axis: create slices with team subgroups
-    if (chart.type === "pie" && (yFieldType === "text" || yFieldType === "dropdown")) {
+    if (
+      chart.type === "pie" &&
+      (yFieldType === "text" || yFieldType === "dropdown")
+    ) {
       // Find Team Number field index for subgrouping
       let teamNumberIndex = -1;
       absoluteIndex = 0;
-      for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+      for (
+        let sectionIdx = 0;
+        sectionIdx < schema.sections.length;
+        sectionIdx++
+      ) {
         const section = schema.sections[sectionIdx];
         for (let fieldIdx = 0; fieldIdx < section.fields.length; fieldIdx++) {
           const field = section.fields[fieldIdx];
@@ -883,7 +924,11 @@ export default function ChartRenderer({
   // Get borderRadius as a number for bar charts (must be defined before chartTheme)
   const borderRadius = useMemo(() => {
     const br = theme.shape?.borderRadius;
-    return typeof br === 'number' ? br : (typeof br === 'string' ? parseInt(br, 10) || 4 : 4);
+    return typeof br === "number"
+      ? br
+      : typeof br === "string"
+      ? parseInt(br, 10) || 4
+      : 4;
   }, [theme.shape]);
 
   // Create comprehensive Nivo theme from Material-UI theme
@@ -891,37 +936,46 @@ export default function ChartRenderer({
   const chartTheme = useMemo(() => {
     return {
       fontFamily: theme.typography.fontFamily,
-      fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
-      
+      fontSize:
+        typeof theme.typography.fontSize === "number"
+          ? theme.typography.fontSize
+          : 12,
+
       // Axes & Grid styling
-    axis: {
+      axis: {
         domain: {
           line: {
             stroke: theme.palette.divider,
             strokeWidth: 1,
           },
         },
-      ticks: {
+        ticks: {
           line: {
             stroke: theme.palette.divider,
             strokeWidth: 1,
           },
           text: {
             fill: theme.palette.text.secondary,
-            fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
+            fontSize:
+              typeof theme.typography.fontSize === "number"
+                ? theme.typography.fontSize
+                : 12,
             fontFamily: theme.typography.fontFamily,
           },
-      },
-      legend: {
+        },
+        legend: {
           text: {
             fill: theme.palette.text.primary,
-            fontSize: (typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12) + 2,
+            fontSize:
+              (typeof theme.typography.fontSize === "number"
+                ? theme.typography.fontSize
+                : 12) + 2,
             fontFamily: theme.typography.fontFamily,
             fontWeight: theme.typography.fontWeightMedium ?? 500,
           },
         },
       },
-      
+
       // Grid lines
       grid: {
         line: {
@@ -931,52 +985,68 @@ export default function ChartRenderer({
           opacity: 0.5,
         },
       },
-      
+
       // Legends styling
-    legends: {
+      legends: {
         text: {
           fill: theme.palette.text.primary,
-          fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
+          fontSize:
+            typeof theme.typography.fontSize === "number"
+              ? theme.typography.fontSize
+              : 12,
           fontFamily: theme.typography.fontFamily,
         },
         title: {
           text: {
             fill: theme.palette.text.primary,
-            fontSize: (typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12) + 2,
+            fontSize:
+              (typeof theme.typography.fontSize === "number"
+                ? theme.typography.fontSize
+                : 12) + 2,
             fontFamily: theme.typography.fontFamily,
             fontWeight: theme.typography.fontWeightMedium ?? 500,
           },
         },
       },
-      
+
       // Labels styling (for pie charts, etc.)
-    labels: {
+      labels: {
         text: {
           fill: theme.palette.text.primary,
-          fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
+          fontSize:
+            typeof theme.typography.fontSize === "number"
+              ? theme.typography.fontSize
+              : 12,
           fontFamily: theme.typography.fontFamily,
         },
       },
-      
+
       // Tooltip styling
-    tooltip: {
-      container: {
-        background: theme.palette.background.paper,
-        color: theme.palette.text.primary,
-          fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
+      tooltip: {
+        container: {
+          background: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          fontSize:
+            typeof theme.typography.fontSize === "number"
+              ? theme.typography.fontSize
+              : 12,
           fontFamily: theme.typography.fontFamily,
           padding: "8px 12px",
           borderRadius: borderRadius,
-          boxShadow: (theme as any).shadows?.[4] || "0px 2px 8px rgba(0,0,0,0.15)",
+          boxShadow:
+            (theme as any).shadows?.[4] || "0px 2px 8px rgba(0,0,0,0.15)",
           border: `1px solid ${theme.palette.divider}`,
         },
       },
-      
+
       // Annotations (for future use)
       annotations: {
         text: {
           fill: theme.palette.text.primary,
-          fontSize: typeof theme.typography.fontSize === 'number' ? theme.typography.fontSize : 12,
+          fontSize:
+            typeof theme.typography.fontSize === "number"
+              ? theme.typography.fontSize
+              : 12,
           fontFamily: theme.typography.fontFamily,
           outlineWidth: 2,
           outlineColor: theme.palette.background.paper,
@@ -999,10 +1069,9 @@ export default function ChartRenderer({
           outlineColor: theme.palette.background.paper,
         },
       },
-      
     };
   }, [theme, borderRadius]);
-  
+
   // Generate color palette from theme for charts
   // Creates a color scale based on the theme's primary/secondary colors
   const chartColors = useMemo(() => {
@@ -1014,12 +1083,11 @@ export default function ChartRenderer({
     const success = theme.palette.success?.main || primary;
     const warning = theme.palette.warning?.main || primary;
     const error = theme.palette.error?.main || primary;
-    
+
     // Return an array of colors for multi-series charts
     // Nivo will cycle through these colors
     return [primary, secondary, info, success, warning, error];
   }, [theme.palette]);
-  
 
   if (processedData.length === 0) {
     return (
@@ -1048,210 +1116,236 @@ export default function ChartRenderer({
     case "bar":
       // Check if this is a grouped bar chart (text/dropdown Y-axis with team subgroups)
       const originalProcessedData = processedData;
-      const isGroupedBar = Array.isArray(originalProcessedData) && 
-                           originalProcessedData.length > 0 && 
-                           (originalProcessedData as any).__teamKeys && 
-                           Array.isArray((originalProcessedData as any).__teamKeys) &&
-                           (originalProcessedData as any).__teamKeys.length > 0;
+      const isGroupedBar =
+        Array.isArray(originalProcessedData) &&
+        originalProcessedData.length > 0 &&
+        (originalProcessedData as any).__teamKeys &&
+        Array.isArray((originalProcessedData as any).__teamKeys) &&
+        (originalProcessedData as any).__teamKeys.length > 0;
 
-      const teamKeys = isGroupedBar ? (originalProcessedData as any).__teamKeys : [];
-      const barData = isGroupedBar ? originalProcessedData.filter((item: any) => item.category !== undefined) : originalProcessedData;
+      const teamKeys = isGroupedBar
+        ? (originalProcessedData as any).__teamKeys
+        : [];
+      const barData = isGroupedBar
+        ? originalProcessedData.filter(
+            (item: any) => item.category !== undefined
+          )
+        : originalProcessedData;
 
       return (
         <Box sx={chartContainerSx}>
-        <ResponsiveBar
-          data={barData}
-          keys={isGroupedBar ? teamKeys : ["value"]}
-          indexBy={isGroupedBar ? "category" : "id"}
-          groupMode={isGroupedBar ? "grouped" : undefined}
-          margin={{ top: 20, right: isGroupedBar ? 140 : 20, bottom: 50, left: 60 }}
-          padding={0.3}
-          colors={chartColors}
-          theme={chartTheme}
-          borderRadius={borderRadius}
-          axisBottom={{
-            tickRotation: -45,
-            legend: isGroupedBar ? (chart.yAxis || "Category") : chart.xAxis,
-            legendPosition: "middle",
-            legendOffset: 40,
-          }}
-          axisLeft={{
-            legend: isGroupedBar ? "Count" : (chart.yAxis || "Value"),
-            legendPosition: "middle",
-            legendOffset: -50,
-          }}
-          legends={isGroupedBar ? [
-            {
-              dataFrom: "keys",
-              anchor: "bottom-right",
-              direction: "column",
-              justify: false,
-              translateX: 120,
-              translateY: 0,
-              itemsSpacing: 2,
-              itemWidth: 100,
-              itemHeight: 20,
-              itemDirection: "left-to-right",
-              itemOpacity: 0.85,
-              symbolSize: 12,
-              effects: [
-                {
-                  on: "hover",
-                  style: {
-                    itemOpacity: 1,
-                  },
-                },
-              ],
-            },
-          ] : undefined}
-        />
+          <ResponsiveBar
+            data={barData}
+            keys={isGroupedBar ? teamKeys : ["value"]}
+            indexBy={isGroupedBar ? "category" : "id"}
+            groupMode={isGroupedBar ? "grouped" : undefined}
+            margin={{
+              top: 20,
+              right: isGroupedBar ? 140 : 20,
+              bottom: 50,
+              left: 60,
+            }}
+            padding={0.3}
+            colors={chartColors}
+            theme={chartTheme}
+            borderRadius={borderRadius}
+            axisBottom={{
+              tickRotation: -45,
+              legend: isGroupedBar ? chart.yAxis || "Category" : chart.xAxis,
+              legendPosition: "middle",
+              legendOffset: 40,
+            }}
+            axisLeft={{
+              legend: isGroupedBar ? "Count" : chart.yAxis || "Value",
+              legendPosition: "middle",
+              legendOffset: -50,
+            }}
+            legends={
+              isGroupedBar
+                ? [
+                    {
+                      dataFrom: "keys",
+                      anchor: "bottom-right",
+                      direction: "column",
+                      justify: false,
+                      translateX: 120,
+                      translateY: 0,
+                      itemsSpacing: 2,
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      itemDirection: "left-to-right",
+                      itemOpacity: 0.85,
+                      symbolSize: 12,
+                      effects: [
+                        {
+                          on: "hover",
+                          style: {
+                            itemOpacity: 1,
+                          },
+                        },
+                      ],
+                    },
+                  ]
+                : undefined
+            }
+          />
         </Box>
       );
 
     case "line":
       return (
         <Box sx={chartContainerSx}>
-        <ResponsiveLine
-          data={processedData}
-          margin={{ top: 20, right: 110, bottom: 50, left: 60 }}
-          xScale={{ type: "linear", min: "auto", max: "auto" }}
-          yScale={{ type: "linear", min: "auto", max: "auto" }}
-          curve="monotoneX"
-          colors={chartColors}
-          theme={chartTheme}
-          axisBottom={{
-            legend: chart.xAxis,
-            legendPosition: "middle",
-            legendOffset: 40,
-          }}
-          axisLeft={{
-            legend: chart.yAxis || "Value",
-            legendPosition: "middle",
-            legendOffset: -50,
-          }}
-          pointSize={8}
-          pointBorderWidth={2}
-          pointBorderColor={{ from: "serieColor" }}
-          enableSlices={false}
-          useMesh={true}
-          enableTouchCrosshair={true}
-          legends={Array.isArray(processedData) && processedData.length > 1 && processedData[0]?.id ? [
-            {
-              anchor: "bottom-right",
-              direction: "column",
-              translateX: 100,
-              itemWidth: 80,
-              itemHeight: 20,
-              symbolShape: "circle",
-            },
-          ] : []}
-        />
+          <ResponsiveLine
+            data={processedData}
+            margin={{ top: 20, right: 110, bottom: 50, left: 60 }}
+            xScale={{ type: "linear", min: "auto", max: "auto" }}
+            yScale={{ type: "linear", min: "auto", max: "auto" }}
+            curve="monotoneX"
+            colors={chartColors}
+            theme={chartTheme}
+            axisBottom={{
+              legend: chart.xAxis,
+              legendPosition: "middle",
+              legendOffset: 40,
+            }}
+            axisLeft={{
+              legend: chart.yAxis || "Value",
+              legendPosition: "middle",
+              legendOffset: -50,
+            }}
+            pointSize={8}
+            pointBorderWidth={2}
+            pointBorderColor={{ from: "serieColor" }}
+            enableSlices={false}
+            useMesh={true}
+            enableTouchCrosshair={true}
+            legends={
+              Array.isArray(processedData) &&
+              processedData.length > 1 &&
+              processedData[0]?.id
+                ? [
+                    {
+                      anchor: "bottom-right",
+                      direction: "column",
+                      translateX: 100,
+                      itemWidth: 80,
+                      itemHeight: 20,
+                      symbolShape: "circle",
+                    },
+                  ]
+                : []
+            }
+          />
         </Box>
       );
 
     case "pie":
       return (
         <Box sx={chartContainerSx}>
-        <ResponsivePie
-          data={processedData}
-          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-          innerRadius={0.5}
-          padAngle={0.7}
-          cornerRadius={borderRadius}
-          colors={chartColors}
-          theme={chartTheme}
-          arcLinkLabelsTextColor={theme.palette.text.primary}
-          arcLabelsTextColor={theme.palette.background.paper}
-        />
+          <ResponsivePie
+            data={processedData}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            innerRadius={0.5}
+            padAngle={0.7}
+            cornerRadius={borderRadius}
+            colors={chartColors}
+            theme={chartTheme}
+            arcLinkLabelsTextColor={theme.palette.text.primary}
+            arcLabelsTextColor={theme.palette.background.paper}
+          />
         </Box>
       );
 
     case "scatter":
       return (
         <Box sx={chartContainerSx}>
-        <ResponsiveScatterPlot
-          data={[
-            {
-              id: chart.name,
-              data: processedData.map((d) => ({ x: d.x, y: d.y })),
-            },
-          ]}
-          margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
-          xScale={{ type: "linear" }}
-          yScale={{ type: "linear" }}
-          colors={chartColors}
-          theme={chartTheme}
-          axisBottom={{
-            legend: chart.xAxis,
-            legendPosition: "middle",
-            legendOffset: 40,
-          }}
-          axisLeft={{
-            legend: chart.yAxis || "Value",
-            legendPosition: "middle",
-            legendOffset: -50,
-          }}
-        />
+          <ResponsiveScatterPlot
+            data={[
+              {
+                id: chart.name,
+                data: processedData.map((d) => ({ x: d.x, y: d.y })),
+              },
+            ]}
+            margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
+            xScale={{ type: "linear" }}
+            yScale={{ type: "linear" }}
+            colors={chartColors}
+            theme={chartTheme}
+            axisBottom={{
+              legend: chart.xAxis,
+              legendPosition: "middle",
+              legendOffset: 40,
+            }}
+            axisLeft={{
+              legend: chart.yAxis || "Value",
+              legendPosition: "middle",
+              legendOffset: -50,
+            }}
+          />
         </Box>
       );
 
     case "boxplot":
       return (
         <Box sx={chartContainerSx}>
-        <ResponsiveBoxPlot
-          data={processedData}
-          margin={{ top: 40, right: 140, bottom: 80, left: 60 }}
-          minValue="auto"
-          maxValue="auto"
-          colors={chartColors}
-          theme={chartTheme as any}
-          axisTop={null}
-          axisRight={null}
-          axisBottom={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: -45,
-            legend: chart.xAxis,
-            legendPosition: "middle",
-            legendOffset: 60,
-          }}
-          axisLeft={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: 0,
-            legend: chart.yAxis || "Value",
-            legendPosition: "middle",
-            legendOffset: -50,
-          }}
-          borderRadius={borderRadius}
-          padding={0.12}
-        />
+          <ResponsiveBoxPlot
+            data={processedData}
+            margin={{ top: 40, right: 140, bottom: 80, left: 60 }}
+            minValue="auto"
+            maxValue="auto"
+            colors={chartColors}
+            theme={chartTheme as any}
+            axisTop={null}
+            axisRight={null}
+            axisBottom={{
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: -45,
+              legend: chart.xAxis,
+              legendPosition: "middle",
+              legendOffset: 60,
+            }}
+            axisLeft={{
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: 0,
+              legend: chart.yAxis || "Value",
+              legendPosition: "middle",
+              legendOffset: -50,
+            }}
+            borderRadius={borderRadius}
+            padding={0.12}
+          />
         </Box>
       );
 
     case "heatmap":
       // Check if we have valid grid data
       if (!Array.isArray(processedData) || processedData.length === 0) {
-      // Check if a grid field was selected
-      let hasGridField = false;
-      if (schema && chart.yAxis) {
-        const yParts = chart.yAxis.split(" - ");
-        if (yParts.length === 2) {
-          for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
-            const section = schema.sections[sectionIdx];
-            if (section.title === yParts[0]) {
-              const field = section.fields.find(f => f.name === yParts[1]);
-              if (field && field.type === "grid") {
-                hasGridField = true;
-                break;
+        // Check if a grid field was selected
+        let hasGridField = false;
+        if (schema && chart.yAxis) {
+          const yParts = chart.yAxis.split(" - ");
+          if (yParts.length === 2) {
+            for (
+              let sectionIdx = 0;
+              sectionIdx < schema.sections.length;
+              sectionIdx++
+            ) {
+              const section = schema.sections[sectionIdx];
+              if (section.title === yParts[0]) {
+                const field = section.fields.find((f) => f.name === yParts[1]);
+                if (field && field.type === "grid") {
+                  hasGridField = true;
+                  break;
+                }
               }
             }
           }
         }
-      }
-      
-      return (
-        <Box sx={chartContainerSx}>
+
+        return (
+          <Box sx={chartContainerSx}>
             <Box
               sx={{
                 display: "flex",
@@ -1261,117 +1355,118 @@ export default function ChartRenderer({
               }}
             >
               <Typography color="text.secondary">
-                {!hasGridField ? 
-                  "No compatible fields found in schema. Please select a Grid field." : 
-                  "No data available"}
+                {!hasGridField
+                  ? "No compatible fields found in schema. Please select a Grid field."
+                  : "No data available"}
               </Typography>
             </Box>
           </Box>
         );
       }
-      
+
       // Calculate max value for color scale (min is always 0 for unchecked cells)
       const allValues: number[] = [];
       processedData.forEach((item: any) => {
         if (item.data && Array.isArray(item.data)) {
           item.data.forEach((d: { x: string; y: number }) => {
-            if (typeof d.y === 'number' && !isNaN(d.y)) {
+            if (typeof d.y === "number" && !isNaN(d.y)) {
               allValues.push(d.y);
             }
           });
         }
       });
-      
+
       const maxValue = allValues.length > 0 ? Math.max(...allValues) : 1;
-      
+
       // Determine color scheme configuration
       const selectedScheme = chart.colorScheme || "theme-primary";
-      
+
       let colorsConfig: any;
-      
+
       if (selectedScheme === "theme-primary") {
         // Use theme-based custom color function
         const mode = theme.palette.mode;
         const primary = theme.palette.primary.main;
-        
+
         const getHeatmapColor = (cell: any) => {
           const value = cell.value || 0;
-          const normalizedValue = maxValue > 0 && value > 0 ? value / maxValue : 0;
-          
+          const normalizedValue =
+            maxValue > 0 && value > 0 ? value / maxValue : 0;
+
           // Create a sequential gradient from light to dark using primary color
           if (normalizedValue === 0) {
             return alpha(theme.palette.text.secondary, 0.1);
           }
-          
+
           // Interpolate from light to dark based on normalized value
           if (normalizedValue <= 0.15) {
-            return lighten(primary, mode === 'light' ? 0.75 : 0.55);
+            return lighten(primary, mode === "light" ? 0.75 : 0.55);
           } else if (normalizedValue <= 0.3) {
-            return lighten(primary, mode === 'light' ? 0.6 : 0.4);
+            return lighten(primary, mode === "light" ? 0.6 : 0.4);
           } else if (normalizedValue <= 0.45) {
-            return lighten(primary, mode === 'light' ? 0.45 : 0.25);
+            return lighten(primary, mode === "light" ? 0.45 : 0.25);
           } else if (normalizedValue <= 0.6) {
-            return lighten(primary, mode === 'light' ? 0.3 : 0.15);
+            return lighten(primary, mode === "light" ? 0.3 : 0.15);
           } else if (normalizedValue <= 0.75) {
-            return lighten(primary, mode === 'light' ? 0.15 : 0.05);
+            return lighten(primary, mode === "light" ? 0.15 : 0.05);
           } else if (normalizedValue <= 0.9) {
             return primary;
           } else {
-            return darken(primary, mode === 'light' ? 0.15 : 0.1);
+            return darken(primary, mode === "light" ? 0.15 : 0.1);
           }
         };
-        
+
         colorsConfig = getHeatmapColor;
       } else {
         // Use predefined Nivo sequential color scheme
         // All schemes are sequential since heatmaps show count data (0 to max)
         colorsConfig = {
-          type: 'sequential',
+          type: "sequential",
           scheme: selectedScheme,
         };
       }
-      
+
       return (
         <Box sx={chartContainerSx}>
-        <ResponsiveHeatMap
-          data={processedData}
-          margin={{ top: 40, right: 90, bottom: 50, left: 90 }}
-          axisTop={{
-            tickSize: 0,
-            tickPadding: 0,
-            tickValues: [],
-            legend: chart.yAxis || "Field",
-            legendPosition: "middle",
-            legendOffset: -30,
-          }}
-          axisLeft={{
-            legend: chart.xAxis || "Group",
-            legendOffset: -70,
-          }}
-          colors={colorsConfig}
-          emptyColor={alpha(theme.palette.text.secondary, 0.15)}
-          borderWidth={1}
-          borderColor={theme.palette.divider}
-          theme={chartTheme}
-          legends={[
-            {
-              anchor: 'bottom',
-              translateX: 0,
-              translateY: 40,
-              length: 400,
-              thickness: 8,
-              direction: 'row',
-              tickPosition: 'after',
-              tickSize: 3,
-              tickSpacing: 4,
-              tickOverlap: false,
-              tickFormat: '>-.2s',
-              title: 'Value →',
-              titleAlign: 'start',
-              titleOffset: 4,
-            },
-          ]}
-        />
+          <ResponsiveHeatMap
+            data={processedData}
+            margin={{ top: 40, right: 90, bottom: 50, left: 90 }}
+            axisTop={{
+              tickSize: 0,
+              tickPadding: 0,
+              tickValues: [],
+              legend: chart.yAxis || "Field",
+              legendPosition: "middle",
+              legendOffset: -30,
+            }}
+            axisLeft={{
+              legend: chart.xAxis || "Group",
+              legendOffset: -70,
+            }}
+            colors={colorsConfig}
+            emptyColor={alpha(theme.palette.text.secondary, 0.15)}
+            borderWidth={1}
+            borderColor={theme.palette.divider}
+            theme={chartTheme}
+            legends={[
+              {
+                anchor: "bottom",
+                translateX: 0,
+                translateY: 40,
+                length: 400,
+                thickness: 8,
+                direction: "row",
+                tickPosition: "after",
+                tickSize: 3,
+                tickSpacing: 4,
+                tickOverlap: false,
+                tickFormat: ">-.2s",
+                title: "Value →",
+                titleAlign: "start",
+                titleOffset: 4,
+              },
+            ]}
+          />
         </Box>
       );
 

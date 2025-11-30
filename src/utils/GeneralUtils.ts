@@ -393,3 +393,21 @@ export function deminifySchema(minifiedSchema: any[]): Schema {
 
   return { name, sections };
 }
+
+/**
+ * Parse timer string to numeric seconds
+ * Formats: "5.0" (5 seconds) or "2:30.0" (2 minutes 30 seconds)
+ */
+export function parseTime(timeString: string | undefined): number {
+  if (!timeString || typeof timeString !== "string") {
+    return 0;
+  }
+  if (timeString.includes(":")) {
+    const parts = timeString.split(":");
+    const minutes = parseInt(parts[0], 10) || 0;
+    const seconds = parseFloat(parts[1]) || 0;
+    return Math.round((minutes * 60 + seconds) * 10);
+  }
+  const seconds = parseFloat(timeString) || 0;
+  return Math.round(seconds * 10);
+}
