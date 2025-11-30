@@ -113,7 +113,7 @@ interface Analysis {
 interface Chart {
   id: string;
   name: string;
-  type: "bar" | "line" | "pie" | "scatter" | "boxplot";
+  type: "bar" | "line" | "pie" | "scatter" | "boxplot" | "heatmap";
   xAxis?: string; 
   yAxis?: string; 
   groupBy?: string; 

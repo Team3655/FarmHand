@@ -6,6 +6,7 @@ import { ResponsiveLine } from "@nivo/line";
 import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { ResponsiveBoxPlot } from "@nivo/boxplot";
+import { ResponsiveHeatMap } from "@nivo/heatmap";
 
 /**
  * Parse timer string to numeric seconds
@@ -46,6 +47,48 @@ const parseGridToNumber = (gridString: string | undefined | null): number | null
     return indices.length;
   }
   return 0;
+};
+
+/**
+ * Parse grid string format: "rowsxcols:[checked IDs]"
+ * Returns object with dimensions and checked cell indices
+ */
+const parseGridData = (gridString: string | undefined | null): { rows: number; cols: number; checkedIndices: number[] } | null => {
+  if (!gridString || typeof gridString !== "string") {
+    return null;
+  }
+  
+  // Extract dimensions: "3x3:[1,2,3]" -> rows=3, cols=3
+  const dimMatch = gridString.match(/^(\d+)x(\d+):/);
+  if (!dimMatch) return null;
+  
+  const rows = parseInt(dimMatch[1], 10);
+  const cols = parseInt(dimMatch[2], 10);
+  
+  // Extract checked indices: "[1,2,3]" -> [1, 2, 3]
+  const indicesMatch = gridString.match(/\[(.*)\]/);
+  const checkedIndices: number[] = [];
+  
+  if (indicesMatch && indicesMatch[1]) {
+    if (indicesMatch[1].trim() !== "") {
+      const indices = indicesMatch[1]
+        .split(",")
+        .map((n) => parseInt(n.trim(), 10))
+        .filter((n) => !isNaN(n));
+      checkedIndices.push(...indices);
+    }
+  }
+  
+  return { rows, cols, checkedIndices };
+};
+
+/**
+ * Convert cell index to coordinate string (e.g., 5 -> "1,2" for 3x3 grid)
+ */
+const indexToCoordinate = (index: number, cols: number): string => {
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return `${row},${col}`;
 };
 
 interface ChartRendererProps {
@@ -259,6 +302,119 @@ export default function ChartRenderer({
         groupedSimple.get(xKey)!.push(yValue as number | string);
       }
     });
+
+    // Handle heatmap charts - special processing for grid data
+    // Format: [{ id: "Team1", data: [{ x: "0,0", y: 5 }, { x: "0,1", y: 3 }, ...] }]
+    if (chart.type === "heatmap") {
+      // For heatmap, we need X-axis for grouping and Y-axis should be a grid field
+      // If Y-axis is not a grid field, return empty data (will show "No data available")
+      if (yFieldType !== "grid" || xFieldIndex === -1 || yFieldIndex === -1) {
+        return [];
+      }
+      
+      // First, determine grid dimensions from the data or schema
+      let gridRows = 3; // default
+      let gridCols = 3; // default
+      
+      // Try to get dimensions from the first grid data item
+      for (const item of data) {
+        if (!item || !item.decoded || !item.decoded.data) continue;
+        const gridValue = item.decoded.data[yFieldIndex];
+        if (gridValue === undefined || gridValue === null) continue;
+        
+        const gridData = parseGridData(String(gridValue));
+        if (gridData) {
+          gridRows = gridData.rows;
+          gridCols = gridData.cols;
+          break; // Use dimensions from first valid grid
+        }
+      }
+      
+      // If we couldn't get dimensions from data, try to get from schema field props
+      if ((gridRows === 3 && gridCols === 3) && schema) {
+        const yParts = chart.yAxis?.split(" - ");
+        if (yParts && yParts.length === 2) {
+          for (const section of schema.sections) {
+            if (section.title === yParts[0]) {
+              const field = section.fields.find(f => f.name === yParts[1]);
+              if (field && field.type === "grid" && field.props) {
+                gridRows = field.props.rows || 3;
+                gridCols = field.props.cols || 3;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Generate all possible cell positions for the full grid
+      const allCellPositions: string[] = [];
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          allCellPositions.push(`${row},${col}`);
+        }
+      }
+      
+      // Sort cell positions (already sorted by row then column)
+      const sortedCellPositions = allCellPositions.sort((a, b) => {
+        const [aRow, aCol] = a.split(',').map(Number);
+        const [bRow, bCol] = b.split(',').map(Number);
+        if (aRow !== bRow) return aRow - bRow;
+        return aCol - bCol;
+      });
+      
+      // For heatmaps with grid data, we need to parse grid cells and group by X-axis
+      const heatmapData = new Map<string, Map<string, number>>(); // groupKey -> cellPosition -> count
+      
+      data.forEach((item) => {
+        if (!item || !item.decoded || !item.decoded.data) return;
+        
+        // Get X-axis value (grouping key, e.g., team number)
+        const xValue = item.decoded.data[xFieldIndex];
+        if (xValue === undefined || xValue === null) return;
+        const groupKey = String(xValue);
+        
+        // Get grid data
+        if (yFieldIndex === -1) return;
+        const gridValue = item.decoded.data[yFieldIndex];
+        if (gridValue === undefined || gridValue === null) return;
+        
+        const gridData = parseGridData(String(gridValue));
+        if (!gridData) return;
+        
+        // Initialize group if needed
+        if (!heatmapData.has(groupKey)) {
+          heatmapData.set(groupKey, new Map<string, number>());
+        }
+        const groupMap = heatmapData.get(groupKey)!;
+        
+        // Count checked cells by position
+        gridData.checkedIndices.forEach((cellIndex) => {
+          const cellPos = indexToCoordinate(cellIndex, gridData.cols);
+          
+          const currentCount = groupMap.get(cellPos) || 0;
+          groupMap.set(cellPos, currentCount + 1);
+        });
+      });
+      
+      // Convert to heatmap format - include ALL cells
+      const result: Array<{ id: string; data: Array<{ x: string; y: number }> }> = [];
+      
+      heatmapData.forEach((cellCounts, groupKey) => {
+        // Include all cell positions, with 0 for unchecked cells
+        const cellData = sortedCellPositions.map((cellPos) => ({
+          x: cellPos,
+          y: cellCounts.get(cellPos) || 0, // 0 for unchecked, count for checked
+        }));
+        
+        result.push({
+          id: groupKey,
+          data: cellData,
+        });
+      });
+      
+      return result;
+    }
 
     // Handle line charts - create one line per group (team)
     // Format: [{ id: "123", data: [{x: 1, y: 10}, {x: 2, y: 15}] }, { id: "456", data: [...] }]
@@ -516,8 +672,8 @@ export default function ChartRenderer({
     if (!groupedSimple) return [];
     const result: any[] = [];
       groupedSimple.forEach((values: (number | string)[], key: string) => {
-        let aggregatedValue = 0;
-        
+      let aggregatedValue = 0;
+      
         // Handle string/categorical values (text, dropdown)
         if (yFieldType === "text" || yFieldType === "dropdown") {
           // For categorical data, count is the most meaningful aggregation
@@ -529,25 +685,25 @@ export default function ChartRenderer({
           if (numericValues.length === 0) {
             aggregatedValue = 0;
           } else {
-            switch (chart.aggregation) {
-              case "sum":
+      switch (chart.aggregation) {
+        case "sum":
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
-                break;
-              case "average":
+          break;
+        case "average":
                 aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
-                break;
-              case "count":
-                aggregatedValue = values.length;
-                break;
-              case "min":
+          break;
+        case "count":
+          aggregatedValue = values.length;
+          break;
+        case "min":
                 aggregatedValue = Math.min(...numericValues);
-                break;
-              case "max":
+          break;
+        case "max":
                 aggregatedValue = Math.max(...numericValues);
-                break;
+          break;
             }
           }
-        }
+      }
 
       result.push({
         id: key,
@@ -761,6 +917,116 @@ export default function ChartRenderer({
           }}
           borderRadius={2}
           padding={0.12}
+        />
+        </Box>
+      );
+
+    case "heatmap":
+      // Check if we have valid grid data
+      if (!Array.isArray(processedData) || processedData.length === 0) {
+      // Check if a grid field was selected
+      let hasGridField = false;
+      if (schema && chart.yAxis) {
+        const yParts = chart.yAxis.split(" - ");
+        if (yParts.length === 2) {
+          for (let sectionIdx = 0; sectionIdx < schema.sections.length; sectionIdx++) {
+            const section = schema.sections[sectionIdx];
+            if (section.title === yParts[0]) {
+              const field = section.fields.find(f => f.name === yParts[1]);
+              if (field && field.type === "grid") {
+                hasGridField = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      return (
+        <Box sx={chartContainerSx}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+              }}
+            >
+              <Typography color="text.secondary">
+                {!hasGridField ? 
+                  "No compatible fields found in schema. Please select a Grid field." : 
+                  "No data available"}
+              </Typography>
+            </Box>
+          </Box>
+        );
+      }
+      
+      // Calculate max value for color scale (min is always 0 for unchecked cells)
+      let maxValue: number | "auto" = "auto";
+      
+      const allValues: number[] = [];
+      processedData.forEach((item: any) => {
+        if (item.data && Array.isArray(item.data)) {
+          item.data.forEach((d: { x: string; y: number }) => {
+            if (typeof d.y === 'number' && !isNaN(d.y)) {
+              allValues.push(d.y);
+            }
+          });
+        }
+      });
+      
+      if (allValues.length > 0) {
+        maxValue = Math.max(...allValues);
+      }
+      
+      return (
+        <Box sx={chartContainerSx}>
+        <ResponsiveHeatMap
+          data={processedData}
+          margin={{ top: 60, right: 90, bottom: 60, left: 90 }}
+          valueFormat=">-.2s"
+          axisTop={{
+            tickRotation: -90,
+            legend: chart.xAxis || "Cell Position",
+            legendPosition: "middle",
+            legendOffset: 40,
+          }}
+          axisRight={{
+            legend: chart.yAxis || "Group",
+            legendOffset: 70,
+          }}
+          axisLeft={{
+            legend: chart.yAxis || "Group",
+            legendOffset: -72,
+          }}
+          colors={{
+            type: 'diverging',
+            scheme: 'red_yellow_blue',
+            divergeAt: 0.5,
+            minValue: maxValue === "auto" ? undefined : 0,
+            maxValue: maxValue === "auto" ? undefined : maxValue,
+          }}
+          emptyColor="#555555"
+          theme={chartTheme}
+          legends={[
+            {
+              anchor: 'bottom',
+              translateX: 0,
+              translateY: 30,
+              length: 400,
+              thickness: 8,
+              direction: 'row',
+              tickPosition: 'after',
+              tickSize: 3,
+              tickSpacing: 4,
+              tickOverlap: false,
+              tickFormat: '>-.2s',
+              title: 'Value →',
+              titleAlign: 'start',
+              titleOffset: 4,
+            },
+          ]}
         />
         </Box>
       );

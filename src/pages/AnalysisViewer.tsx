@@ -11,19 +11,9 @@ import {
   Stack,
   Chip,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Grid,
   Card,
   CardContent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Autocomplete,
 } from "@mui/material";
 import PageHeader from "../ui/PageHeader";
 import AnalysisIcon from "@mui/icons-material/AutoGraphRounded";
@@ -31,6 +21,7 @@ import BarChartIcon from "@mui/icons-material/CandlestickChartRounded";
 import LineChartIcon from "@mui/icons-material/ShowChartRounded";
 import PieChartIcon from "@mui/icons-material/PieChartRounded";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlotRounded";
+import HeatmapIcon from "@mui/icons-material/GradientRounded";
 import FilterIcon from "@mui/icons-material/FilterListRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
@@ -44,6 +35,8 @@ import { getSchemaFromHash } from "../utils/SchemaUtils";
 import { createSchemaHash } from "../utils/GeneralUtils";
 import useDialog from "../hooks/useDialog";
 import ChartRenderer from "../ui/ChartRenderer";
+import FilterDialog from "../ui/dialog/AnalysisFilterDialog";
+import ChartConfigDialog from "../ui/dialog/ChartConfigDialog";
 
 export default function AnalysisViewer() {
   const theme = useTheme();
@@ -215,6 +208,7 @@ export default function AnalysisViewer() {
     { id: "pie", label: "Pie Chart", icon: <PieChartIcon /> },
     { id: "scatter", label: "Scatter Plot", icon: <ScatterPlotIcon /> },
     { id: "boxplot", label: "Box Plot", icon: <BarChartIcon /> },
+    { id: "heatmap", label: "Heatmap", icon: <HeatmapIcon sx={{transform: 'rotate(90deg)'}}/> },
   ];
 
   const handleSave = async () => {
@@ -439,7 +433,7 @@ export default function AnalysisViewer() {
           <SpeedDialAction
             key={chart.id}
             icon={chart.icon}
-            tooltipTitle={chart.label}
+            slotProps={{tooltip: {title: chart.label}}}
             onClick={() => handleAddChart(chart.id as Chart["type"])}
           />
         ))}
@@ -466,297 +460,5 @@ export default function AnalysisViewer() {
         schema={selectedSchema || undefined}
       />
     </Box>
-  );
-}
-
-// Filter Dialog Component
-function FilterDialog({
-  open,
-  onClose,
-  currentTeams,
-  currentMatches,
-  onSave,
-  availableData,
-  schema,
-}: {
-  open: boolean;
-  onClose: () => void;
-  currentTeams: number[];
-  currentMatches: number[];
-  onSave: (teams: number[], matches: number[]) => void;
-  availableData: QrCode[];
-  schema?: Schema;
-}) {
-  const [selectedTeams, setSelectedTeams] = useState<number[]>(currentTeams);
-  const [selectedMatches, setSelectedMatches] =
-    useState<number[]>(currentMatches);
-  const [uniqueTeams, setUniqueTeams] = useState<number[]>([]);
-  const [uniqueMatches, setUniqueMatches] = useState<number[]>([]);
-
-  useEffect(() => {
-    setSelectedTeams(currentTeams);
-    setSelectedMatches(currentMatches);
-  }, [currentTeams, currentMatches, open]);
-
-  // Extract unique teams and matches from QR codes
-  useEffect(() => {
-    const extractTeamsAndMatches = async () => {
-      if (!schema || availableData.length === 0) {
-        setUniqueTeams([]);
-        setUniqueMatches([]);
-        return;
-      }
-
-      // Find field indices for "Match Number" and "Team Number"
-      const allFields = schema.sections.flatMap((section) => section.fields);
-      const matchNumberIndex = allFields.findIndex(
-        (field) => field.name === "Match Number"
-      );
-      const teamNumberIndex = allFields.findIndex(
-        (field) => field.name === "Team Number"
-      );
-
-      if (matchNumberIndex === -1 && teamNumberIndex === -1) {
-        setUniqueTeams([]);
-        setUniqueMatches([]);
-        return;
-      }
-
-      const teams = new Set<number>();
-      const matches = new Set<number>();
-
-      // Process all QR codes
-      const nonArchivedCodes = availableData.filter((qr) => !qr.archived);
-      const decodedResults = await Promise.all(
-        nonArchivedCodes.map(async (qr) => {
-          try {
-            const decoded = await decodeQR(qr.data);
-            return decoded;
-          } catch (e) {
-            return null;
-          }
-        })
-      );
-
-      // Extract teams and matches from decoded data
-      decodedResults.forEach((decoded) => {
-        if (!decoded) return;
-
-        if (matchNumberIndex !== -1 && decoded.data[matchNumberIndex] !== undefined) {
-          const matchNum = Number(decoded.data[matchNumberIndex]);
-          if (!isNaN(matchNum) && matchNum > 0) {
-            matches.add(matchNum);
-          }
-        }
-
-        if (teamNumberIndex !== -1 && decoded.data[teamNumberIndex] !== undefined) {
-          const teamNum = Number(decoded.data[teamNumberIndex]);
-          if (!isNaN(teamNum) && teamNum > 0) {
-            teams.add(teamNum);
-          }
-        }
-      });
-
-      setUniqueTeams(Array.from(teams).sort((a, b) => a - b));
-      setUniqueMatches(Array.from(matches).sort((a, b) => a - b));
-    };
-
-    if (open) {
-      extractTeamsAndMatches();
-    }
-  }, [availableData, schema, open]);
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Filter Data</DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1 }}>
-          <Autocomplete
-            multiple
-            options={uniqueTeams}
-            value={selectedTeams}
-            onChange={(_, newValue) => setSelectedTeams(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} label="Teams" placeholder="All teams" />
-            )}
-          />
-          <Autocomplete
-            multiple
-            options={uniqueMatches}
-            value={selectedMatches}
-            onChange={(_, newValue) => setSelectedMatches(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Matches"
-                placeholder="All matches"
-              />
-            )}
-          />
-          <Typography variant="body2" color="text.secondary">
-            Leave empty to include all teams/matches
-          </Typography>
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={() => onSave(selectedTeams, selectedMatches)}
-        >
-          Apply Filters
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// Chart Config Dialog Component
-function ChartConfigDialog({
-  open,
-  onClose,
-  chartType,
-  existingChart,
-  onSave,
-  schema,
-}: {
-  open: boolean;
-  onClose: () => void;
-  chartType: Chart["type"] | null;
-  existingChart: Chart | null;
-  onSave: (config: Partial<Chart>) => void;
-  schema?: Schema;
-}) {
-  const [name, setName] = useState("");
-  const [xAxis, setXAxis] = useState("");
-  const [yAxis, setYAxis] = useState("");
-  const [aggregation, setAggregation] = useState<Chart["aggregation"]>("sum");
-  const [sortMode, setSortMode] = useState<Chart["sortMode"]>("none");
-
-  useEffect(() => {
-    if (open) {
-      setName(existingChart?.name || "");
-      setXAxis(existingChart?.xAxis || "");
-      setYAxis(existingChart?.yAxis || "");
-      setAggregation(existingChart?.aggregation || "sum");
-      setSortMode(existingChart?.sortMode || "none");
-    }
-  }, [open, existingChart]);
-
-  const handleSave = () => {
-    onSave({ name, xAxis, yAxis, aggregation, sortMode });
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {existingChart ? "Edit Chart" : `Add ${chartType} Chart`}
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1 }}>
-          <TextField
-            label="Chart Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-          />
-
-          <FormControl fullWidth>
-            <InputLabel>X-Axis Field</InputLabel>
-            <Select
-              value={xAxis}
-              label="X-Axis Field"
-              onChange={(e) => setXAxis(e.target.value)}
-            >
-              {schema?.sections.map((section) => [
-                <MenuItem key={`${section.title}-header`} disabled sx={{ fontWeight: 600 }}>
-                  {section.title}
-                </MenuItem>,
-                ...section.fields.map((field) => (
-                  <MenuItem
-                    key={`${section.title} - ${field.name}`}
-                    value={`${section.title} - ${field.name}`}
-                    sx={{ pl: 4 }}
-                  >
-                    {field.name}
-                  </MenuItem>
-                )),
-              ])}
-            </Select>
-          </FormControl>
-
-          {chartType !== "pie" && (
-            <FormControl fullWidth>
-              <InputLabel>Y-Axis Field</InputLabel>
-              <Select
-                value={yAxis}
-                label="Y-Axis Field"
-                onChange={(e) => setYAxis(e.target.value)}
-              >
-                {schema?.sections.map((section) => [
-                  <MenuItem key={`${section.title}-header-y`} disabled sx={{ fontWeight: 600 }}>
-                    {section.title}
-                  </MenuItem>,
-                  ...section.fields.map((field) => (
-                    <MenuItem
-                      key={`${section.title} - ${field.name}-y`}
-                      value={`${section.title} - ${field.name}`}
-                      sx={{ pl: 4 }}
-                    >
-                      {field.name}
-                    </MenuItem>
-                  )),
-                ])}
-              </Select>
-            </FormControl>
-          )}
-
-          <FormControl fullWidth>
-            <InputLabel>Aggregation</InputLabel>
-            <Select
-              value={aggregation}
-              label="Aggregation"
-              onChange={(e) =>
-                setAggregation(e.target.value as Chart["aggregation"])
-              }
-            >
-              <MenuItem value="sum">Sum</MenuItem>
-              <MenuItem value="average">Average</MenuItem>
-              <MenuItem value="count">Count</MenuItem>
-              <MenuItem value="min">Minimum</MenuItem>
-              <MenuItem value="max">Maximum</MenuItem>
-            </Select>
-          </FormControl>
-
-          {(chartType === "bar" || chartType === "boxplot") && (
-            <FormControl fullWidth>
-              <InputLabel>Sort Mode</InputLabel>
-              <Select
-                value={sortMode}
-                label="Sort Mode"
-                onChange={(e) =>
-                  setSortMode(e.target.value as Chart["sortMode"])
-                }
-              >
-                <MenuItem value="none">None (Natural Order)</MenuItem>
-                <MenuItem value="ascending">Ascending (Low to High)</MenuItem>
-                <MenuItem value="descending">Descending (High to Low)</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={!name || !xAxis}
-        >
-          {existingChart ? "Save" : "Add Chart"}
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 }
