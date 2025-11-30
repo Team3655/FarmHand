@@ -7,6 +7,47 @@ import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { ResponsiveBoxPlot } from "@nivo/boxplot";
 
+/**
+ * Parse timer string to numeric seconds
+ * Formats: "5.0" (5 seconds) or "2:30.0" (2 minutes 30 seconds)
+ */
+const parseTimerToSeconds = (timerString: string | undefined | null): number | null => {
+  if (!timerString || typeof timerString !== "string") {
+    return null;
+  }
+  
+  if (timerString.includes(":")) {
+    const parts = timerString.split(":");
+    const minutes = parseInt(parts[0], 10) || 0;
+    const seconds = parseFloat(parts[1]) || 0;
+    return minutes * 60 + seconds;
+  }
+  
+  const seconds = parseFloat(timerString) || 0;
+  return seconds;
+};
+
+/**
+ * Extract numeric value from grid string format: "3x3:[1,2,3]"
+ * Returns count of active cells
+ */
+const parseGridToNumber = (gridString: string | undefined | null): number | null => {
+  if (!gridString || typeof gridString !== "string") {
+    return null;
+  }
+  
+  const match = gridString.match(/\[(.*)\]/);
+  if (match && match[1]) {
+    if (match[1].trim() === "") return 0;
+    const indices = match[1]
+      .split(",")
+      .map((n) => parseInt(n.trim(), 10))
+      .filter((n) => !isNaN(n));
+    return indices.length;
+  }
+  return 0;
+};
+
 interface ChartRendererProps {
   chart: Chart;
   data: any[];
@@ -52,10 +93,12 @@ export default function ChartRenderer({
       }
     }
 
-    // Find field indices by section and field name
+    // Find field indices by section and field name, and track field types
     // Build flat array with section tracking for absolute indices
     let xFieldIndex = -1;
     let yFieldIndex = -1;
+    let xFieldType: ComponentType | null = null;
+    let yFieldType: ComponentType | null = null;
     let absoluteIndex = 0;
 
     for (
@@ -73,6 +116,7 @@ export default function ChartRenderer({
           // If section name was specified, only match if it's the right section
           if (!xSectionName || section.title === xSectionName) {
             xFieldIndex = absoluteIndex;
+            xFieldType = field.type;
           }
         }
 
@@ -81,6 +125,7 @@ export default function ChartRenderer({
           // If section name was specified, only match if it's the right section
           if (!ySectionName || section.title === ySectionName) {
             yFieldIndex = absoluteIndex;
+            yFieldType = field.type;
           }
         }
 
@@ -134,13 +179,14 @@ export default function ChartRenderer({
     }
 
     // Group data - for line charts with grouping, use nested map; otherwise simple map
-    let groupedByLine: Map<string, Map<string, number[]>> | null = null;
-    let groupedSimple: Map<string, number[]> | null = null;
+    // Note: arrays can contain strings for text/dropdown fields, but will be converted to numbers where needed
+    let groupedByLine: Map<string, Map<string, (number | string)[]>> | null = null;
+    let groupedSimple: Map<string, (number | string)[]> | null = null;
 
     if (chart.type === "line" && groupByFieldIndex !== -1) {
-      groupedByLine = new Map<string, Map<string, number[]>>();
+      groupedByLine = new Map<string, Map<string, (number | string)[]>>();
     } else {
-      groupedSimple = new Map<string, number[]>();
+      groupedSimple = new Map<string, (number | string)[]>();
     }
 
     data.forEach((item) => {
@@ -149,15 +195,43 @@ export default function ChartRenderer({
       const xValue = item.decoded.data[xFieldIndex];
       if (xValue === undefined || xValue === null) return;
 
-      const xKey = String(xValue);
+      // Convert X value to string key (handle different data types)
+      let xKey = String(xValue);
+      if (xFieldType === "checkbox") {
+        xKey = String(Boolean(xValue));
+      }
 
-      let yValue = 1; // Default for count when no y-axis
+      // Convert Y value based on field type
+      let yValue: number | string = 1; // Default for count when no y-axis
       if (yFieldIndex !== -1) {
         const rawYValue = item.decoded.data[yFieldIndex];
         if (rawYValue !== undefined && rawYValue !== null) {
-          const numValue = Number(rawYValue);
-          if (!isNaN(numValue)) {
-            yValue = numValue;
+          // Handle different field types
+          if (yFieldType === "timer") {
+            // Convert timer string to seconds
+            const seconds = parseTimerToSeconds(String(rawYValue));
+            if (seconds !== null) {
+              yValue = seconds;
+            }
+          } else if (yFieldType === "grid") {
+            // Extract count of active cells from grid
+            const cellCount = parseGridToNumber(String(rawYValue));
+            if (cellCount !== null) {
+              yValue = cellCount;
+            }
+          } else if (yFieldType === "checkbox") {
+            // Convert boolean to number (0 or 1) for numeric charts
+            yValue = Boolean(rawYValue) ? 1 : 0;
+          } else if (yFieldType === "text" || yFieldType === "dropdown") {
+            // For categorical fields, use the string value as-is
+            // They'll be counted/aggregated in the grouping logic
+            yValue = String(rawYValue);
+          } else {
+            // Try to convert to number for numeric fields
+            const numValue = Number(rawYValue);
+            if (!isNaN(numValue)) {
+              yValue = numValue;
+            }
           }
         }
       }
@@ -176,13 +250,13 @@ export default function ChartRenderer({
         if (!groupMap.has(xKey)) {
           groupMap.set(xKey, []);
         }
-        groupMap.get(xKey)!.push(yValue);
+        groupMap.get(xKey)!.push(yValue as number | string);
       } else if (groupedSimple) {
         // For other chart types or line charts without grouping: group by X-axis value
         if (!groupedSimple.has(xKey)) {
           groupedSimple.set(xKey, []);
         }
-        groupedSimple.get(xKey)!.push(yValue);
+        groupedSimple.get(xKey)!.push(yValue as number | string);
       }
     });
 
@@ -198,22 +272,35 @@ export default function ChartRenderer({
         xValueMap.forEach((yValues, xKey) => {
           let aggregatedValue = 0;
           
-          switch (chart.aggregation || "average") {
-            case "sum":
-              aggregatedValue = yValues.reduce((a, b) => a + b, 0);
-              break;
-            case "average":
-              aggregatedValue = yValues.reduce((a, b) => a + b, 0) / yValues.length;
-              break;
-            case "count":
-              aggregatedValue = yValues.length;
-              break;
-            case "min":
-              aggregatedValue = Math.min(...yValues);
-              break;
-            case "max":
-              aggregatedValue = Math.max(...yValues);
-              break;
+          // Handle string/categorical values (text, dropdown)
+          if (yFieldType === "text" || yFieldType === "dropdown") {
+            // For categorical data, count is the most meaningful aggregation
+            aggregatedValue = yValues.length;
+          } else {
+            // For numeric values, use specified aggregation
+            const numericValues = yValues.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
+            
+            if (numericValues.length === 0) {
+              aggregatedValue = 0;
+            } else {
+              switch (chart.aggregation || "average") {
+                case "sum":
+                  aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
+                  break;
+                case "average":
+                  aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                  break;
+                case "count":
+                  aggregatedValue = yValues.length;
+                  break;
+                case "min":
+                  aggregatedValue = Math.min(...numericValues);
+                  break;
+                case "max":
+                  aggregatedValue = Math.max(...numericValues);
+                  break;
+              }
+            }
           }
           
           // Try to convert X-key to number if possible (for proper sorting)
@@ -271,10 +358,26 @@ export default function ChartRenderer({
       const result: Array<{ group: string; value: number }> = [];
       let allValues: number[] = []; // Collect all values for min/max calculation
 
-      groupedSimple.forEach((values: number[], key: string) => {
+      groupedSimple.forEach((values: (number | string)[], key: string) => {
         // Filter out invalid values and keep all raw values
-        values.forEach((v: number) => {
-          const num = typeof v === 'number' ? v : Number(v);
+        values.forEach((v: number | string) => {
+          let num: number;
+          
+          // Convert based on field type
+          if (yFieldType === "timer") {
+            const seconds = parseTimerToSeconds(String(v));
+            if (seconds === null) return;
+            num = seconds;
+          } else if (yFieldType === "grid") {
+            const cellCount = parseGridToNumber(String(v));
+            if (cellCount === null) return;
+            num = cellCount;
+          } else if (yFieldType === "checkbox") {
+            num = Boolean(v) ? 1 : 0;
+          } else {
+            num = typeof v === 'number' ? v : Number(v);
+          }
+          
           if (!isNaN(num) && isFinite(num) && num !== null && num !== undefined) {
             result.push({
               group: String(key),
@@ -349,22 +452,35 @@ export default function ChartRenderer({
       groupedSimple.forEach((values, xKey) => {
         let aggregatedValue = 0;
         
-        switch (chart.aggregation || "average") {
-          case "sum":
-            aggregatedValue = values.reduce((a, b) => a + b, 0);
-            break;
-          case "average":
-            aggregatedValue = values.reduce((a, b) => a + b, 0) / values.length;
-            break;
-          case "count":
-            aggregatedValue = values.length;
-            break;
-          case "min":
-            aggregatedValue = Math.min(...values);
-            break;
-          case "max":
-            aggregatedValue = Math.max(...values);
-            break;
+        // Handle string/categorical values (text, dropdown)
+        if (yFieldType === "text" || yFieldType === "dropdown") {
+          // For categorical data, count is the most meaningful aggregation
+          aggregatedValue = values.length;
+        } else {
+          // For numeric values, use specified aggregation
+          const numericValues = values.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
+          
+          if (numericValues.length === 0) {
+            aggregatedValue = 0;
+          } else {
+            switch (chart.aggregation || "average") {
+              case "sum":
+                aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
+                break;
+              case "average":
+                aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                break;
+              case "count":
+                aggregatedValue = values.length;
+                break;
+              case "min":
+                aggregatedValue = Math.min(...numericValues);
+                break;
+              case "max":
+                aggregatedValue = Math.max(...numericValues);
+                break;
+            }
+          }
         }
         
         const xNum = Number(xKey);
@@ -399,26 +515,39 @@ export default function ChartRenderer({
     // For other chart types (bar, pie, scatter), aggregate the values
     if (!groupedSimple) return [];
     const result: any[] = [];
-    groupedSimple.forEach((values, key) => {
-      let aggregatedValue = 0;
-      
-      switch (chart.aggregation) {
-        case "sum":
-          aggregatedValue = values.reduce((a, b) => a + b, 0);
-          break;
-        case "average":
-          aggregatedValue = values.reduce((a, b) => a + b, 0) / values.length;
-          break;
-        case "count":
+      groupedSimple.forEach((values: (number | string)[], key: string) => {
+        let aggregatedValue = 0;
+        
+        // Handle string/categorical values (text, dropdown)
+        if (yFieldType === "text" || yFieldType === "dropdown") {
+          // For categorical data, count is the most meaningful aggregation
           aggregatedValue = values.length;
-          break;
-        case "min":
-          aggregatedValue = Math.min(...values);
-          break;
-        case "max":
-          aggregatedValue = Math.max(...values);
-          break;
-      }
+        } else {
+          // For numeric values, use specified aggregation
+          const numericValues = values.map(v => typeof v === 'number' ? v : Number(v)).filter(v => !isNaN(v));
+          
+          if (numericValues.length === 0) {
+            aggregatedValue = 0;
+          } else {
+            switch (chart.aggregation) {
+              case "sum":
+                aggregatedValue = numericValues.reduce((a, b) => a + b, 0);
+                break;
+              case "average":
+                aggregatedValue = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+                break;
+              case "count":
+                aggregatedValue = values.length;
+                break;
+              case "min":
+                aggregatedValue = Math.min(...numericValues);
+                break;
+              case "max":
+                aggregatedValue = Math.max(...numericValues);
+                break;
+            }
+          }
+        }
 
       result.push({
         id: key,
