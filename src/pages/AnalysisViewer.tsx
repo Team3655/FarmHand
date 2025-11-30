@@ -17,7 +17,8 @@ import {
 } from "@mui/material";
 import PageHeader from "../ui/PageHeader";
 import AnalysisIcon from "@mui/icons-material/AutoGraphRounded";
-import BarChartIcon from "@mui/icons-material/CandlestickChartRounded";
+import BarChartIcon from "@mui/icons-material/BarChartRounded";
+import BoxPlotIcon from "@mui/icons-material/CandlestickChartRounded";
 import LineChartIcon from "@mui/icons-material/ShowChartRounded";
 import PieChartIcon from "@mui/icons-material/PieChartRounded";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlotRounded";
@@ -207,7 +208,7 @@ export default function AnalysisViewer() {
     { id: "line", label: "Line Chart", icon: <LineChartIcon /> },
     { id: "pie", label: "Pie Chart", icon: <PieChartIcon /> },
     { id: "scatter", label: "Scatter Plot", icon: <ScatterPlotIcon /> },
-    { id: "boxplot", label: "Box Plot", icon: <BarChartIcon /> },
+    { id: "boxplot", label: "Box Plot", icon: <BoxPlotIcon /> },
     { id: "heatmap", label: "Heatmap", icon: <HeatmapIcon sx={{transform: 'rotate(90deg)'}}/> },
   ];
 
