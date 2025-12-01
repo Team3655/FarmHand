@@ -527,13 +527,10 @@ export default function useProcessedData(
         (values: (number | string | number[])[], key: string) => {
           values.forEach((v: number | string | number[]) => {
             if (isRangeSlider) {
-              console.log("range slider found");
-              console.log("range slider", v);
               // Parse range slider value: could be array [min, max] or string representation
               let rangeArray: [number, number] | null = null;
 
               if (Array.isArray(v)) {
-                console.log("range slider value is an array");
                 // Already an array
                 if (
                   v.length === 2 &&
@@ -543,7 +540,6 @@ export default function useProcessedData(
                   rangeArray = [v[0], v[1]];
                 }
               } else if (typeof v === "string") {
-                console.log("range slider value is not an array");
                 // Try parsing string like "[5,10]" or "5,10"
                 try {
                   const parsed = JSON.parse(v);
@@ -551,9 +547,6 @@ export default function useProcessedData(
                     rangeArray = [Number(parsed[0]), Number(parsed[1])];
                   }
                 } catch {
-                  console.log(
-                    "failed to parse as string, using commas to separate vlaues"
-                  );
                   // Try comma-separated format
                   const parts = v.split(",").map((s) => s.trim());
                   if (parts.length === 2) {
@@ -561,7 +554,6 @@ export default function useProcessedData(
                     const max = Number(parts[1]);
                     if (!isNaN(min) && !isNaN(max)) {
                       rangeArray = [min, max];
-                      console.log("range slider min and max are valie");
                     }
                   }
                 }

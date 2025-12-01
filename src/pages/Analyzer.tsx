@@ -37,8 +37,6 @@ export default function Analyzer() {
   };
 
   const handleChartTypeClick = (chartId: string) => {
-    // TODO: Handle chart type selection/drag
-    console.log("Selected chart type:", chartId);
     handleSpeedDialClose();
   };
 

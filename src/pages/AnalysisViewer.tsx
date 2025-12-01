@@ -195,21 +195,6 @@ export default function AnalysisViewer() {
         return true;
       });
 
-      console.log("AnalysisViewer - Filtered data:", {
-        totalDecoded: decoded.length,
-        filtered: filtered.length,
-        selectedTeams:
-          editingAnalysis.selectedTeams.length > 0
-            ? editingAnalysis.selectedTeams
-            : "ALL",
-        selectedMatches:
-          editingAnalysis.selectedMatches.length > 0
-            ? editingAnalysis.selectedMatches
-            : "ALL",
-        teamFieldIndex: teamNumberIndex,
-        matchFieldIndex: matchNumberIndex,
-      });
-
       setFilteredData(filtered);
     };
 
