@@ -56,7 +56,7 @@ import { useSchema } from "../context/SchemaContext";
 import CreateDialog from "../ui/dialog/CreateDialog";
 import DeleteDialog from "../ui/dialog/DeleteDialog";
 import DuplicateNameDialog from "../ui/dialog/DuplicateNameDialog";
-import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
+import UnsavedChangesDialog from "../ui/dialog/UnsavedChangesDialog";
 import { saveSchema } from "../utils/SchemaUtils";
 import ShareDialog from "../ui/dialog/ShareDialog";
 import RenameDialog from "../ui/dialog/RenameDialog";
@@ -943,7 +943,7 @@ export default function SchemaEditor() {
             errorMessage={duplicateNameError}
           />
 
-          <UnsavedSchemaChangesDialog
+          <UnsavedChangesDialog
             open={unsavedChangesDialogOpen}
             onClose={closeUnsavedChangesDialog}
             onDiscard={handleDiscardChanges}

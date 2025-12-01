@@ -41,6 +41,7 @@ import ChartRenderer from "../ui/ChartRenderer";
 import FilterDialog from "../ui/dialog/AnalysisFilterDialog";
 import ChartConfigDialog from "../ui/dialog/ChartConfigDialog";
 import StoreManager, { StoreKeys } from "../utils/StoreManager";
+import UnsavedChangesDialog from "../ui/dialog/UnsavedChangesDialog";
 
 export default function AnalysisViewer() {
   const theme = useTheme();
@@ -51,6 +52,19 @@ export default function AnalysisViewer() {
   const [allQrCodes] = useAsyncFetch(fetchQrCodes);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [selectedSchema, setSelectedSchema] = useState<Schema | null>(null);
+  const [currentChartType, setCurrentChartType] = useState<
+    Chart["type"] | null
+  >(null);
+  const [editingChart, setEditingChart] = useState<Chart | null>(null);
+  // Dialogs
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
+  const [filterDialogOpen, openFilterDialog, closeFilterDialog] = useDialog();
+  const [chartConfigOpen, openChartConfig, closeChartConfig] = useDialog();
+  const [
+    unsavedChangesDialogOpen,
+    openUnsavedChangesDialog,
+    closeUnsavedChangesDialog,
+  ] = useDialog();
 
   // Find the current analysis
   const analysis = useMemo(
@@ -61,7 +75,9 @@ export default function AnalysisViewer() {
   // Local state for editing
   const [editingAnalysis, setEditingAnalysis] = useState<Analysis | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [pinnedCharts, setPinnedCharts] = useState<Map<string, { pinned: boolean }>>(new Map());
+  const [pinnedCharts, setPinnedCharts] = useState<
+    Map<string, { pinned: boolean }>
+  >(new Map());
 
   // Load schema based on analysis schemaHash
   useEffect(() => {
@@ -95,15 +111,6 @@ export default function AnalysisViewer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingAnalysis?.schemaHash, availableSchemas]);
 
-  // Dialogs
-  const [speedDialOpen, setSpeedDialOpen] = useState(false);
-  const [filterDialogOpen, openFilterDialog, closeFilterDialog] = useDialog();
-  const [chartConfigOpen, openChartConfig, closeChartConfig] = useDialog();
-  const [currentChartType, setCurrentChartType] = useState<
-    Chart["type"] | null
-  >(null);
-  const [editingChart, setEditingChart] = useState<Chart | null>(null);
-
   // Initialize editing state
   useEffect(() => {
     if (analysis) {
@@ -115,12 +122,14 @@ export default function AnalysisViewer() {
   useEffect(() => {
     const loadPinnedCharts = async () => {
       if (!editingAnalysis) return;
-      
+
       const pinnedMap = new Map<string, { pinned: boolean }>();
-      
+
       for (const chart of editingAnalysis.charts || []) {
         try {
-          const pinnedData = await StoreManager.get(StoreKeys.analysis.pinned(chart.id));
+          const pinnedData = await StoreManager.get(
+            StoreKeys.analysis.pinned(chart.id)
+          );
           if (pinnedData) {
             const parsed = JSON.parse(pinnedData);
             if (parsed.pinned) {
@@ -128,13 +137,16 @@ export default function AnalysisViewer() {
             }
           }
         } catch (error) {
-          console.error(`Failed to load pinned data for chart ${chart.id}:`, error);
+          console.error(
+            `Failed to load pinned data for chart ${chart.id}:`,
+            error
+          );
         }
       }
-      
+
       setPinnedCharts(pinnedMap);
     };
-    
+
     loadPinnedCharts();
   }, [editingAnalysis]);
 
@@ -315,10 +327,10 @@ export default function AnalysisViewer() {
     if (!editingAnalysis) return;
 
     // Save chart reference to store (chartId and analysisId)
-    const pinnedData = { 
-      pinned: true, 
+    const pinnedData = {
+      pinned: true,
       chartId,
-      analysisId: editingAnalysis.id 
+      analysisId: editingAnalysis.id,
     };
     await StoreManager.set(
       StoreKeys.analysis.pinned(chartId),
@@ -362,6 +374,13 @@ export default function AnalysisViewer() {
       </Box>
     );
   }
+  const handleBackClick = () => {
+    if (hasUnsavedChanges) {
+      openUnsavedChangesDialog();
+    } else {
+      navigate("/analyes");
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -372,7 +391,7 @@ export default function AnalysisViewer() {
           editingAnalysis.charts!.length
         } charts`}
         leadingComponent={
-          <IconButton onClick={() => navigate("/analyses")}>
+          <IconButton onClick={handleBackClick}>
             <ArrowBackIcon />
           </IconButton>
         }
@@ -450,11 +469,19 @@ export default function AnalysisViewer() {
                     <Stack direction="row" spacing={1}>
                       <IconButton
                         size="small"
-                        onClick={() => (isPinned ? handleUnpinChart(chart.id) : handlePinChart(chart.id))}
+                        onClick={() =>
+                          isPinned
+                            ? handleUnpinChart(chart.id)
+                            : handlePinChart(chart.id)
+                        }
                         sx={{
-                          color: isPinned ? theme.palette.primary.main : theme.palette.text.secondary,
+                          color: isPinned
+                            ? theme.palette.primary.main
+                            : theme.palette.text.secondary,
                         }}
-                        title={isPinned ? "Unpin chart" : "Pin chart to dashboard"}
+                        title={
+                          isPinned ? "Unpin chart" : "Pin chart to dashboard"
+                        }
                       >
                         {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
                       </IconButton>
@@ -473,7 +500,9 @@ export default function AnalysisViewer() {
                         onClick={() => handleDeleteChart(chart.id)}
                         disabled={isPinned}
                         sx={{
-                          color: isPinned ? theme.palette.text.disabled : theme.palette.error.main,
+                          color: isPinned
+                            ? theme.palette.text.disabled
+                            : theme.palette.error.main,
                           opacity: isPinned ? 0.5 : 1,
                         }}
                       >
@@ -544,6 +573,12 @@ export default function AnalysisViewer() {
         onSave={handleUpdateFilters}
         availableData={allQrCodes || []}
         schema={selectedSchema || undefined}
+      />
+
+      <UnsavedChangesDialog
+        open={unsavedChangesDialogOpen}
+        onDiscard={() => navigate("/analyses")}
+        onClose={closeUnsavedChangesDialog}
       />
 
       {/* Chart Config Dialog */}

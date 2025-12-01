@@ -36,7 +36,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useNavigate } from "react-router";
 import { themeRegistry } from "../config/themes";
 import useDialog from "../hooks/useDialog";
-import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
+import UnsavedChangesDialog from "../ui/dialog/UnsavedChangesDialog";
 import NumberInput from "../ui/components/NumberInput";
 import TextInput from "../ui/components/TextInput";
 
@@ -612,7 +612,7 @@ export default function Settings() {
         </DialogActions>
       </Dialog>
 
-      <UnsavedSchemaChangesDialog
+      <UnsavedChangesDialog
         open={unsavedChangesDialogOpen}
         onClose={closeUnsavedChangesDialog}
         onDiscard={handleDiscardChanges}
