@@ -55,8 +55,8 @@ export default function NumberInput(props: NumberFieldProps) {
       allowWheelScrub
       format={{ useGrouping: false }}
       value={value ?? null}
-      min={min}
-      max={max}
+      // Don't pass min/max to BaseNumberField to allow empty values during input
+      // We'll handle validation manually on blur
       disabled={disabled}
       required={required}
       onValueChange={(newValue) => {
@@ -87,15 +87,52 @@ export default function NumberInput(props: NumberFieldProps) {
             inputRef={props.ref}
             value={inputValue}
             onBlur={(e) => {
-              // On blur, if the input is empty but required, set it to the minimum value.
-              // Otherwise, format the current value.
-              if (onChange &&e.target.value === "" && required && min !== undefined) {
-                onChange(min);
-                setInputValue(String(min));
+              // On blur, apply min/max validation only if a value is present
+              if (e.target.value === "") {
+                // Empty input - allow null unless required
+                if (onChange && required && min !== undefined) {
+                  // Only enforce minimum on empty required fields
+                  onChange(min);
+                  setInputValue(String(min));
+                } else {
+                  // Allow empty value
+                  onChange?.(null);
+                  setInputValue("");
+                }
               } else {
-                // Re-format the value on blur to handle cases like "5." -> "5"
-                const formatted = value === null || value === undefined ? "" : String(value);
-                setInputValue(formatted);
+                // Non-empty input - validate min/max
+                // Use the parsed value from props, or parse from input as fallback
+                let numValue = value;
+                if (numValue === null || numValue === undefined) {
+                  // Try to parse the input value as fallback
+                  const parsed = parseFloat(e.target.value);
+                  if (!isNaN(parsed)) {
+                    numValue = parsed;
+                  }
+                }
+                
+                if (numValue !== null && numValue !== undefined) {
+                  let validatedValue = numValue;
+                  // Apply min/max constraints only after a number has been input
+                  if (min !== undefined && validatedValue < min) {
+                    validatedValue = min;
+                  }
+                  if (max !== undefined && validatedValue > max) {
+                    validatedValue = max;
+                  }
+                  if (validatedValue !== numValue) {
+                    onChange?.(validatedValue);
+                    setInputValue(String(validatedValue));
+                  } else {
+                    // Re-format the value on blur to handle cases like "5." -> "5"
+                    const formatted = String(validatedValue);
+                    setInputValue(formatted);
+                  }
+                } else {
+                  // Invalid number - keep current input or reset to empty
+                  const formatted = value === null || value === undefined ? "" : String(value);
+                  setInputValue(formatted);
+                }
               }
               props.onBlur?.(e);
             }}
@@ -104,9 +141,11 @@ export default function NumberInput(props: NumberFieldProps) {
               setInputValue(newStringValue);
 
               if (e.target.value === "") {
+                // Allow empty values - don't apply min/max during input
                 onChange?.(null);
               } else {
                 // Let the base component parse and handle the change
+                // Don't apply min/max here - only on blur
                 props.onChange?.(e);
               }
             }}

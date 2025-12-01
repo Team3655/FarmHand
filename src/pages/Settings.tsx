@@ -94,11 +94,27 @@ export default function Settings() {
   };
 
   const handleSaveSettings = async () => {
+    // Validate and clamp number fields before saving
+    const validatedSettings = { ...editingSettings };
+    
+    // Ensure DEVICE_ID is valid (min 1)
+    if (validatedSettings.DEVICE_ID === null || validatedSettings.DEVICE_ID === undefined || validatedSettings.DEVICE_ID < 1) {
+      validatedSettings.DEVICE_ID = 1;
+    }
+    
+    // Ensure EXPECTED_DEVICES_COUNT is valid (min 1, max 50)
+    if (validatedSettings.EXPECTED_DEVICES_COUNT === null || validatedSettings.EXPECTED_DEVICES_COUNT === undefined || validatedSettings.EXPECTED_DEVICES_COUNT < 1) {
+      validatedSettings.EXPECTED_DEVICES_COUNT = 1;
+    } else if (validatedSettings.EXPECTED_DEVICES_COUNT > 50) {
+      validatedSettings.EXPECTED_DEVICES_COUNT = 50;
+    }
+    
     // Save all settings
-    for (const [key, value] of Object.entries(editingSettings)) {
+    for (const [key, value] of Object.entries(validatedSettings)) {
       await setSetting(key as keyof Settings, value);
     }
-    setOriginalSettings(editingSettings);
+    setEditingSettings(validatedSettings);
+    setOriginalSettings(validatedSettings);
     setSnackbarOpen(true);
   };
 
@@ -190,8 +206,8 @@ export default function Settings() {
           description: "Identify this device in match data",
           value: editingSettings.DEVICE_ID,
           onChange: (value: number | null) => {
-            const num = value === null ? 1 : Math.max(1, value);
-            handleChange("DEVICE_ID", num);
+            // Allow null values during input - min/max validation happens on blur in NumberInput
+            handleChange("DEVICE_ID", value);
           },
           inputProps: { min: 1 },
         },
@@ -201,8 +217,8 @@ export default function Settings() {
           description: "Set the total number of scouting devices",
           value: editingSettings.EXPECTED_DEVICES_COUNT,
           onChange: (value: number | null) => {
-            const num = value === null ? 1 : Math.max(1, Math.min(50, value));
-            handleChange("EXPECTED_DEVICES_COUNT", num);
+            // Allow null values during input - min/max validation happens on blur in NumberInput
+            handleChange("EXPECTED_DEVICES_COUNT", value);
           },
           inputProps: { min: 1, max: 50 },
         },
@@ -282,7 +298,6 @@ export default function Settings() {
             onChange={(value) => setting.onChange(value)}
             min={setting.inputProps.min}
             max={setting.inputProps.max}
-            fullWidth
           />
         );
       case "button":
