@@ -8,7 +8,6 @@ import {
   Stack,
   Typography,
   useTheme,
-  LinearProgress,
   Grid,
   Card,
   CardContent,
