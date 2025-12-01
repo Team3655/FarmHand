@@ -17,7 +17,7 @@ import DashboardIcon from "@mui/icons-material/DashboardRounded";
 import ExpandIcon from "@mui/icons-material/ExpandMoreRounded";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
 import CheckCircleIcon from "@mui/icons-material/CheckCircleRounded";
-import DevicesIcon from "@mui/icons-material/DevicesRounded";
+import WarningIcon from "@mui/icons-material/WarningRounded";
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../ui/PageHeader";
 import { useSettings, defaultSettings } from "../context/SettingsContext";
@@ -131,12 +131,13 @@ export default function LeadScoutDashboard() {
       return devices && devices.length === EXPECTED_DEVICES_COUNT;
     }).length;
     const incomplete = allMatchNumbers.length - complete;
-    const completionRate =
-      allMatchNumbers.length > 0
-        ? (complete / allMatchNumbers.length) * 100
-        : 0;
+    
+    const missing = allMatchNumbers.filter((matchNum) => {
+      const devices = receivedMatches.get(matchNum);
+      return devices && devices.length === 0;
+    }).length;
 
-    return { complete, incomplete, completionRate };
+    return { complete, incomplete, missing };
   }, [allMatchNumbers, receivedMatches, EXPECTED_DEVICES_COUNT]);
 
   // Load and process pinned charts from store
@@ -340,7 +341,7 @@ export default function LeadScoutDashboard() {
                   color: theme.palette.warning.main,
                 }}
               >
-                <ErrorOutlineIcon sx={{ fontSize: 28 }} />
+                <WarningIcon sx={{ fontSize: 28 }} />
               </Box>
               <Box>
                 <Typography
@@ -356,58 +357,43 @@ export default function LeadScoutDashboard() {
             </Stack>
           </Paper>
 
-          {/* Completion Rate */}
+          {/* Missing Matches */}
           <Paper
             elevation={0}
             sx={{
               flex: 1,
               p: 3,
               borderRadius: 3,
-              border: `2px solid ${theme.palette.info.main}40`,
-              background: `linear-gradient(135deg, ${theme.palette.info.main}10 0%, ${theme.palette.info.main}05 100%)`,
+              border: `2px solid ${theme.palette.error.main}40`,
+              background: `linear-gradient(135deg, ${theme.palette.error.main}10 0%, ${theme.palette.error.main}05 100%)`,
             }}
           >
-            <Stack spacing={1}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: `${theme.palette.info.main}20`,
-                    color: theme.palette.info.main,
-                  }}
-                >
-                  <DevicesIcon sx={{ fontSize: 28 }} />
-                </Box>
-                <Box>
-                  <Typography
-                    variant="h3"
-                    sx={{ fontWeight: 600, color: theme.palette.info.main }}
-                  >
-                    {Math.round(stats.completionRate)}%
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Completion Rate
-                  </Typography>
-                </Box>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={stats.completionRate}
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Box
                 sx={{
-                  height: 8,
-                  borderRadius: 1,
-                  backgroundColor: `${theme.palette.info.main}20`,
-                  "& .MuiLinearProgress-bar": {
-                    backgroundColor: theme.palette.info.main,
-                    borderRadius: 1,
-                  },
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: `${theme.palette.error.main}20`,
+                  color: theme.palette.error.main,
                 }}
-              />
+              >
+                <ErrorOutlineIcon sx={{ fontSize: 28 }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h3"
+                  sx={{ fontWeight: 600, color: theme.palette.error.main }}
+                >
+                  {stats.incomplete}
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Missing Matches
+                </Typography>
+              </Box>
             </Stack>
           </Paper>
         </Stack>
