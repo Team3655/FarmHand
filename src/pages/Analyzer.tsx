@@ -14,7 +14,6 @@ import BarChartIcon from "@mui/icons-material/BarChartRounded";
 import LineChartIcon from "@mui/icons-material/ShowChartRounded";
 import PieChartIcon from "@mui/icons-material/PieChartRounded";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlotRounded";
-import AddIcon from "@mui/icons-material/AddRounded";
 
 export default function Analyzer() {
   const theme = useTheme();
@@ -36,7 +35,7 @@ export default function Analyzer() {
     setSpeedDialOpen(false);
   };
 
-  const handleChartTypeClick = (chartId: string) => {
+  const handleChartTypeClick = () => {
     handleSpeedDialClose();
   };
 
@@ -85,9 +84,8 @@ export default function Analyzer() {
           <SpeedDialAction
             key={chart.id}
             icon={chart.icon}
-            tooltipTitle={chart.label}
-            tooltipOpen
-            onClick={() => handleChartTypeClick(chart.id)}
+            slotProps={{tooltip: {title: chart.label, open: true}}}
+            onClick={handleChartTypeClick}
           />
         ))}
       </SpeedDial>
