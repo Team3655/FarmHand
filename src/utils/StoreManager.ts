@@ -131,5 +131,6 @@ export const StoreKeys = {
   analysis: {
     byId: (id: number) => `analysis::${id}`,
     list: "analyses::list",
+    pinned: (chartId: string) => `analysis::${chartId}::pinned`,
   },
 };

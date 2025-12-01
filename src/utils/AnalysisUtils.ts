@@ -92,3 +92,63 @@ export async function deleteAnalysis(analysisId: number): Promise<void> {
   // Reuse the schema delete command (it's just a generic file delete)
   await invoke("delete_schema", { path: filePath });
 }
+
+/**
+ * Extract SVG from a chart container element
+ * @param containerElement The container element that holds the chart
+ * @returns The SVG string or null if not found
+ */
+export function extractSvgFromChart(containerElement: HTMLElement | null): string | null {
+  if (!containerElement) return null;
+
+  // Find the SVG element within the container
+  const svgElement = containerElement.querySelector("svg");
+  if (!svgElement) return null;
+
+  // Clone the SVG to avoid modifying the original
+  const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+  
+  // Get the actual rendered dimensions of the SVG
+  const rect = svgElement.getBoundingClientRect();
+  const renderedWidth = rect.width;
+  const renderedHeight = rect.height;
+  
+  // Get existing viewBox - Nivo charts should have this
+  let viewBox = clonedSvg.getAttribute("viewBox");
+  const existingWidth = clonedSvg.getAttribute("width");
+  const existingHeight = clonedSvg.getAttribute("height");
+  
+  // If no viewBox exists, try to create one from existing dimensions or rendered size
+  if (!viewBox) {
+    let vbWidth = renderedWidth;
+    let vbHeight = renderedHeight;
+    
+    // Try to use existing width/height attributes if they're numeric
+    if (existingWidth && !isNaN(parseFloat(existingWidth))) {
+      vbWidth = parseFloat(existingWidth);
+    }
+    if (existingHeight && !isNaN(parseFloat(existingHeight))) {
+      vbHeight = parseFloat(existingHeight);
+    }
+    
+    if (vbWidth > 0 && vbHeight > 0) {
+      viewBox = `0 0 ${vbWidth} ${vbHeight}`;
+      clonedSvg.setAttribute("viewBox", viewBox);
+    }
+  }
+  
+  // Remove fixed width/height attributes - let CSS control the size
+  // This allows the SVG to scale properly within its container
+  clonedSvg.removeAttribute("width");
+  clonedSvg.removeAttribute("height");
+  
+  // Ensure preserveAspectRatio is set for proper scaling
+  if (!clonedSvg.hasAttribute("preserveAspectRatio")) {
+    clonedSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  }
+
+  // Serialize the SVG to string
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(clonedSvg);
+}
+

@@ -28,6 +28,8 @@ import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import ArrowBackIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveIcon from "@mui/icons-material/SaveRounded";
+import PushPinIcon from "@mui/icons-material/PushPinRounded";
+import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import { useAnalysis } from "../context/AnalysisContext";
 import { useSchema } from "../context/SchemaContext";
 import { useAsyncFetch } from "../hooks/useAsyncFetch";
@@ -38,6 +40,7 @@ import useDialog from "../hooks/useDialog";
 import ChartRenderer from "../ui/ChartRenderer";
 import FilterDialog from "../ui/dialog/AnalysisFilterDialog";
 import ChartConfigDialog from "../ui/dialog/ChartConfigDialog";
+import StoreManager, { StoreKeys } from "../utils/StoreManager";
 
 export default function AnalysisViewer() {
   const theme = useTheme();
@@ -58,6 +61,7 @@ export default function AnalysisViewer() {
   // Local state for editing
   const [editingAnalysis, setEditingAnalysis] = useState<Analysis | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pinnedCharts, setPinnedCharts] = useState<Map<string, { pinned: boolean }>>(new Map());
 
   // Load schema based on analysis schemaHash
   useEffect(() => {
@@ -106,6 +110,33 @@ export default function AnalysisViewer() {
       setEditingAnalysis(JSON.parse(JSON.stringify(analysis)));
     }
   }, [analysis]);
+
+  // Load pinned charts from store
+  useEffect(() => {
+    const loadPinnedCharts = async () => {
+      if (!editingAnalysis) return;
+      
+      const pinnedMap = new Map<string, { pinned: boolean }>();
+      
+      for (const chart of editingAnalysis.charts || []) {
+        try {
+          const pinnedData = await StoreManager.get(StoreKeys.analysis.pinned(chart.id));
+          if (pinnedData) {
+            const parsed = JSON.parse(pinnedData);
+            if (parsed.pinned) {
+              pinnedMap.set(chart.id, { pinned: true });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to load pinned data for chart ${chart.id}:`, error);
+        }
+      }
+      
+      setPinnedCharts(pinnedMap);
+    };
+    
+    loadPinnedCharts();
+  }, [editingAnalysis]);
 
   // Check for unsaved changes
   useEffect(() => {
@@ -271,6 +302,47 @@ export default function AnalysisViewer() {
       ...editingAnalysis,
       charts: editingAnalysis.charts!.filter((c) => c.id !== chartId),
     });
+    // Remove pinned data if chart is deleted
+    StoreManager.remove(StoreKeys.analysis.pinned(chartId));
+    setPinnedCharts((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(chartId);
+      return newMap;
+    });
+  };
+
+  const handlePinChart = async (chartId: string) => {
+    if (!editingAnalysis) return;
+
+    // Save chart reference to store (chartId and analysisId)
+    const pinnedData = { 
+      pinned: true, 
+      chartId,
+      analysisId: editingAnalysis.id 
+    };
+    await StoreManager.set(
+      StoreKeys.analysis.pinned(chartId),
+      JSON.stringify(pinnedData)
+    );
+
+    // Update local state
+    setPinnedCharts((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(chartId, { pinned: true });
+      return newMap;
+    });
+  };
+
+  const handleUnpinChart = async (chartId: string) => {
+    // Remove from store
+    await StoreManager.remove(StoreKeys.analysis.pinned(chartId));
+
+    // Update local state
+    setPinnedCharts((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(chartId);
+      return newMap;
+    });
   };
 
   const handleUpdateFilters = (teams: number[], matches: number[]) => {
@@ -355,57 +427,78 @@ export default function AnalysisViewer() {
 
       {/* Charts Grid */}
       <Grid container spacing={3}>
-        {editingAnalysis.charts!.map((chart) => (
-          <Grid size={{ xs: 12, md: 6 }} key={chart.id}>
-            <Card
-              elevation={0}
-              sx={{
-                border: `2px solid ${theme.palette.divider}`,
-                borderRadius: 3,
-                overflow: "visible",
-              }}
-            >
-              <CardContent sx={{ overflow: "visible" }}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 2 }}
-                >
-                  <Typography variant="h6">{chart.name}</Typography>
-                  <Stack direction="row" spacing={1}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditChart(chart)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteChart(chart.id)}
-                      sx={{ color: theme.palette.error.main }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+        {editingAnalysis.charts!.map((chart) => {
+          const isPinned = pinnedCharts.has(chart.id);
+          return (
+            <Grid size={{ xs: 12, md: 6 }} key={chart.id}>
+              <Card
+                elevation={0}
+                sx={{
+                  border: `2px solid ${theme.palette.divider}`,
+                  borderRadius: 3,
+                  overflow: "visible",
+                }}
+              >
+                <CardContent sx={{ overflow: "visible" }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <Typography variant="h6">{chart.name}</Typography>
+                    <Stack direction="row" spacing={1}>
+                      <IconButton
+                        size="small"
+                        onClick={() => (isPinned ? handleUnpinChart(chart.id) : handlePinChart(chart.id))}
+                        sx={{
+                          color: isPinned ? theme.palette.primary.main : theme.palette.text.secondary,
+                        }}
+                        title={isPinned ? "Unpin chart" : "Pin chart to dashboard"}
+                      >
+                        {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditChart(chart)}
+                        disabled={isPinned}
+                        sx={{
+                          opacity: isPinned ? 0.5 : 1,
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteChart(chart.id)}
+                        disabled={isPinned}
+                        sx={{
+                          color: isPinned ? theme.palette.text.disabled : theme.palette.error.main,
+                          opacity: isPinned ? 0.5 : 1,
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
                   </Stack>
-                </Stack>
-                <Box
-                  sx={{
-                    height: 300,
-                    overflow: "visible",
-                    position: "relative",
-                  }}
-                >
-                  <ChartRenderer
-                    chart={chart}
-                    data={filteredData}
-                    schema={selectedSchema || undefined}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+                  <Box
+                    sx={{
+                      height: 300,
+                      overflow: "visible",
+                      position: "relative",
+                    }}
+                  >
+                    <ChartRenderer
+                      chart={chart}
+                      data={filteredData}
+                      schema={selectedSchema || undefined}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
 
       {editingAnalysis.charts!.length === 0 && (
