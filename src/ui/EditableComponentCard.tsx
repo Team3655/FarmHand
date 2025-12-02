@@ -225,7 +225,7 @@ export default function EditableComponentCard(props: ComponentCardProps) {
         return (
           <>
             <NumberInput
-              label="Default Value"
+              label="Default Value (Optional)"
               value={
                 editedComponent.props?.default !== undefined
                   ? Number(editedComponent.props.default)
@@ -235,18 +235,16 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             />
             <Stack direction="row" spacing={2}>
               <NumberInput
-                label="Min"
+                label="Min (Optional)"
                 value={editedComponent.props?.min ?? null}
                 onChange={(value) => handleFieldChange("min", value)}
                 error={false}
-                fullWidth
               />
               <NumberInput
-                label="Max"
+                label="Max (Optional)"
                 value={editedComponent.props?.max ?? null}
                 onChange={(value) => handleFieldChange("max", value)}
                 error={false}
-                fullWidth
               />
             </Stack>
           </>
@@ -281,14 +279,13 @@ export default function EditableComponentCard(props: ComponentCardProps) {
               label="Range Slider?"
             />
             <NumberInput
-              label="Step"
+              label="Step (Optional)"
               value={editedComponent.props?.step ?? null}
               onChange={(value) => handleFieldChange("step", value)}
               min={1}
-              fullWidth
             />
             <TextField
-              label="Default Value"
+              label="Default Value (Optional)"
               type="text"
               value={rawDefaultValue}
               onChange={(e) => {
@@ -326,18 +323,16 @@ export default function EditableComponentCard(props: ComponentCardProps) {
             />
             <Stack direction="row" spacing={2}>
               <NumberInput
-                label="Min"
+                label="Min (Optional)"
                 value={editedComponent.props?.min ?? null}
                 onChange={(value) => handleFieldChange("min", value)}
                 error={false}
-                fullWidth
               />
               <NumberInput
-                label="Max"
+                label="Max (Optional)"
                 value={editedComponent.props?.max ?? null}
                 onChange={(value) => handleFieldChange("max", value)}
                 error={false}
-                fullWidth
               />
             </Stack>
           </>
@@ -346,18 +341,16 @@ export default function EditableComponentCard(props: ComponentCardProps) {
         return (
           <Stack direction="row" spacing={2}>
             <NumberInput
-              label="Min"
+              label="Min (Optional)"
               value={editedComponent.props?.min ?? null}
               onChange={(value) => handleFieldChange("min", value)}
               error={false}
-              fullWidth
             />
             <NumberInput
-              label="Max"
+              label="Max (Optional)"
               value={editedComponent.props?.max ?? null}
               onChange={(value) => handleFieldChange("max", value)}
               error={false}
-              fullWidth
             />
           </Stack>
         );
@@ -371,7 +364,6 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                 onChange={(value) => handleFieldChange("rows", value)}
                 min={1}
                 max={50}
-                fullWidth
               />
               <NumberInput
                 label="Columns"
@@ -379,7 +371,6 @@ export default function EditableComponentCard(props: ComponentCardProps) {
                 onChange={(value) => handleFieldChange("cols", value)}
                 min={1}
                 max={50}
-                fullWidth
               />
             </Stack>
             <FormControlLabel
@@ -646,8 +637,11 @@ export default function EditableComponentCard(props: ComponentCardProps) {
         open={renameDialogOpen}
         initialName={newFieldName}
         onClose={closeRenameDialog}
-        onRename={(newName) => setNewFieldName(newName)}
-        title="Rename Section"
+        onRename={(newName) => {
+          handleFieldChange("name", newName);
+          closeRenameDialog();
+        }}
+        title="Rename Field"
       />
     </>
   );

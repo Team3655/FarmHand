@@ -10,11 +10,14 @@ import {
   Stack,
   Typography,
   useTheme,
+  Snackbar,
+  Alert,
+  Slide,
 } from "@mui/material";
 import Section from "../ui/Section";
 import { useSchema } from "../context/SchemaContext";
 import { useScoutData } from "../context/ScoutDataContext";
-import { useState, Key, useRef } from "react";
+import { useState, Key, useRef, useCallback } from "react";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineRounded";
 import ResetIcon from "@mui/icons-material/ReplayRounded";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
@@ -22,11 +25,12 @@ import QrCodeIcon from "@mui/icons-material/QrCodeRounded";
 import AddChartIcon from "@mui/icons-material/AddchartRounded";
 
 import useDialog from "../hooks/useDialog";
-import { QrCodeBuilder, saveQrCode } from "../utils/QrUtils";
+import { QrCodeBuilder } from "../utils/QrUtils";
 import { getFieldValueByName } from "../utils/GeneralUtils";
 import PageHeader from "../ui/PageHeader";
 import { useSettings } from "../context/SettingsContext";
-import ShareDialog from "../ui/dialog/ShareDialog";
+import CompleteScoutDialog from "../ui/dialog/CompleteScoutDialog";
+import WarningDialog from "../ui/dialog/WarningDialog";
 
 export default function Scout() {
   const { schema, hash, schemaName } = useSchema();
@@ -43,29 +47,64 @@ export default function Scout() {
   const [resetKey, setResetKey] = useState<Key>(0);
   const [showErrorPopup, openErrorPopup, closeErrorPopup] = useDialog();
   const [showResetPopup, openResetPopup, closeResetPopup] = useDialog();
-  const [showQrPopup, openQrPopup, closeQrPopup] = useDialog();
+  const [
+    showUnsavedResetWarning,
+    openUnsavedResetWarning,
+    closeUnsavedResetWarning,
+  ] = useDialog();
+  const [
+    showCompleteScoutDialog,
+    openCompleteScoutDialog,
+    closeCompleteScoutDialog,
+  ] = useDialog();
+  const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
   const qrCodeData = useRef<QrCode | null>(null);
   const [expandedSectionIndex, setExpandedSectionIndex] = useState<
     number | false
   >(0);
+  const isSavedRef = useRef<boolean>(false);
 
   const deviceID = settings.DEVICE_ID;
 
-  const handleSectionToggle = (panelIndex: number) => (isExpanded: boolean) => {
-    if (isExpanded) {
-      setExpandedSectionIndex(panelIndex);
-    } else {
-      // If the current panel is being closed, open the next one
-      const totalSections = schema!.sections.length;
-      const nextIndex = (panelIndex + 1) % totalSections;
-      setExpandedSectionIndex(nextIndex);
+  const handleSectionToggle = useCallback(
+    (panelIndex: number) => (isExpanded: boolean) => {
+      if (isExpanded) {
+        // Only update if the state is actually different
+        setExpandedSectionIndex((prev) => {
+          if (prev === panelIndex) return prev;
+          return panelIndex;
+        });
+      } else {
+        // If the current panel is being closed, open the next one
+        // Only do this if the current panel is actually expanded
+        setExpandedSectionIndex((prev) => {
+          if (prev !== panelIndex) return prev; // Panel wasn't expanded, no change needed
+          const totalSections = schema!.sections.length;
+          const nextIndex = (panelIndex + 1) % totalSections;
+          return nextIndex;
+        });
+      }
+    },
+    [schema]
+  );
+
+  const handleCompleteScout = async () => {
+    // Mark as saved (autosave is handled in CompleteScoutDialog)
+    isSavedRef.current = true;
+
+    // Close dialog
+    closeCompleteScoutDialog();
+
+    // Show success snackbar if autosave is enabled
+    if (settings.AUTOSAVE_ON_COMPLETE) {
+      setShowSuccessSnackbar(true);
     }
-  };
 
-  const handleSaveQr = async (code: QrCode) => {
-    await saveQrCode(code);
-
-    closeQrPopup();
+    // Reset form
+    await clearMatchData();
+    clearErrors();
+    setResetKey((prev) => (prev as number) + 1);
+    isSavedRef.current = false;
   };
 
   const schemaData = schema;
@@ -80,11 +119,30 @@ export default function Scout() {
     handleGenerateQr();
   };
 
+  const handleResetClick = () => {
+    // Check if scout has been saved
+    if (!isSavedRef.current) {
+      openUnsavedResetWarning();
+      return;
+    }
+    // If saved, show normal reset confirmation
+    openResetPopup();
+  };
+
   const handleReset = async () => {
     await clearMatchData();
     clearErrors();
     setResetKey((prev) => (prev as number) + 1);
+    isSavedRef.current = false;
     closeResetPopup();
+  };
+
+  const handleConfirmReset = async () => {
+    await clearMatchData();
+    clearErrors();
+    setResetKey((prev) => (prev as number) + 1);
+    isSavedRef.current = false;
+    closeUnsavedResetWarning();
   };
 
   const handleGenerateQr = async () => {
@@ -103,7 +161,7 @@ export default function Scout() {
       deviceID
     );
     qrCodeData.current = qr;
-    openQrPopup();
+    openCompleteScoutDialog();
   };
 
   if (!schema) {
@@ -158,7 +216,7 @@ export default function Scout() {
                 borderWidth: 2,
               },
             }}
-            onClick={openResetPopup}
+            onClick={handleResetClick}
             startIcon={<ResetIcon />}
           >
             Reset form
@@ -280,14 +338,46 @@ export default function Scout() {
         </DialogActions>
       </Dialog>
 
-      {/*QR export popup */}
-      <ShareDialog
-        mode="match"
-        open={showQrPopup}
-        onClose={closeQrPopup}
-        onSave={handleSaveQr}
-        qrCodeData={qrCodeData.current!}
+      {/* Complete Scout Dialog */}
+      {qrCodeData.current && (
+        <CompleteScoutDialog
+          open={showCompleteScoutDialog}
+          onClose={closeCompleteScoutDialog}
+          onComplete={handleCompleteScout}
+          qrCode={qrCodeData.current}
+          schema={schema!}
+          matchData={getMatchDataMap()}
+          autosave={settings.AUTOSAVE_ON_COMPLETE}
+        />
+      )}
+
+      {/* Unsaved Reset Warning */}
+      <WarningDialog
+        open={showUnsavedResetWarning}
+        onClose={closeUnsavedResetWarning}
+        onConfirm={handleConfirmReset}
+        title="Reset Form"
+        message="Are you sure you want to reset? This match has not yet been saved."
+        confirmText="Reset"
+        cancelText="Cancel"
       />
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={showSuccessSnackbar}
+        onClose={() => setShowSuccessSnackbar(false)}
+        slots={{ transition: Slide }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        autoHideDuration={3000}
+      >
+        <Alert
+          onClose={() => setShowSuccessSnackbar(false)}
+          severity="success"
+          variant="filled"
+        >
+          Match successfully saved to match history
+        </Alert>
+      </Snackbar>
     </>
   );
 }

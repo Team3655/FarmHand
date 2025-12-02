@@ -4,21 +4,16 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { getSchemaFromHash } from "./SchemaUtils";
 import changelog from "../../CHANGELOG.md?raw";
+import StoreManager, { StoreKeys } from "./StoreManager";
 
-export function isFieldInvalid(
-  required: boolean,
-  type: string,
-  defaultValue: any,
-  value: any
-) {
-  return (
-    required &&
-    (value === "" ||
-      (type === "checkbox" && value === false) ||
-      (type === "number" && (value === undefined || value === null)) ||
-      (type === "grid" && (value as string).split(":")[1] === "[]") ||
-      value === defaultValue)
-  );
+const GITHUB_OWNER = "Team3655";
+const GITHUB_REPO = "FarmHand";
+const CACHE_DURATION = 3600000;
+
+interface GitHubRelease {
+  tag_name: string;
+  prerelease: boolean;
+  draft: boolean;
 }
 
 const typeMap: { [key: string]: string } = {
@@ -45,6 +40,22 @@ const propMap: { [key: string]: string } = {
   cols: "C",
   cellLabel: "L",
 };
+
+export function isFieldInvalid(
+  required: boolean,
+  type: string,
+  defaultValue: any,
+  value: any
+) {
+  return (
+    required &&
+    (value === "" ||
+      (type === "checkbox" && value === false) ||
+      (type === "number" && (value === undefined || value === null)) ||
+      (type === "grid" && (value as string).split(":")[1] === "[]") ||
+      value === defaultValue)
+  );
+}
 
 export function EmbedDataInSvg(code: QrCode) {
   let svgToSave = code.image;
@@ -392,4 +403,135 @@ export function deminifySchema(minifiedSchema: any[]): Schema {
   );
 
   return { name, sections };
+}
+
+/**
+ * Parse timer string to numeric seconds
+ * Formats: "5.0" (5 seconds) or "2:30.0" (2 minutes 30 seconds)
+ */
+export function parseTime(timeString: string | undefined): number {
+  if (!timeString || typeof timeString !== "string") {
+    return 0;
+  }
+  if (timeString.includes(":")) {
+    const parts = timeString.split(":");
+    const minutes = parseInt(parts[0], 10) || 0;
+    const seconds = parseFloat(parts[1]) || 0;
+    return Math.round((minutes * 60 + seconds) * 10);
+  }
+  const seconds = parseFloat(timeString) || 0;
+  return Math.round(seconds * 10);
+}
+
+/**
+ * Extract numeric value from grid string format: "3x3:[1,2,3]"
+ * Returns count of active cells
+ */
+export function parseGridToNumber(
+  gridString: string | undefined | null
+): number | null {
+  if (!gridString || typeof gridString !== "string") {
+    return null;
+  }
+
+  const match = gridString.match(/\[(.*)\]/);
+  if (match && match[1]) {
+    if (match[1].trim() === "") return 0;
+    const indices = match[1]
+      .split(",")
+      .map((n) => parseInt(n.trim(), 10))
+      .filter((n) => !isNaN(n));
+    return indices.length;
+  }
+  return 0;
+}
+
+/**
+ * Parse grid string format: "rowsxcols:[checked IDs]"
+ * Returns object with dimensions and checked cell indices
+ */
+export function parseGridData(
+  gridString: string | undefined | null
+): { rows: number; cols: number; checkedIndices: number[] } | null {
+  if (!gridString || typeof gridString !== "string") {
+    return null;
+  }
+
+  // Extract dimensions: "3x3:[1,2,3]" -> rows=3, cols=3
+  const dimMatch = gridString.match(/^(\d+)x(\d+):/);
+  if (!dimMatch) return null;
+
+  const rows = parseInt(dimMatch[1], 10);
+  const cols = parseInt(dimMatch[2], 10);
+
+  // Extract checked indices: "[1,2,3]" -> [1, 2, 3]
+  const indicesMatch = gridString.match(/\[(.*)\]/);
+  const checkedIndices: number[] = [];
+
+  if (indicesMatch && indicesMatch[1]) {
+    if (indicesMatch[1].trim() !== "") {
+      const indices = indicesMatch[1]
+        .split(",")
+        .map((n) => parseInt(n.trim(), 10))
+        .filter((n) => !isNaN(n));
+      checkedIndices.push(...indices);
+    }
+  }
+
+  return { rows, cols, checkedIndices };
+}
+
+/**
+ * Convert cell index to coordinate string (e.g., 5 -> "1,2" for 3x3 grid)
+ */
+export function indexToCoordinate(index: number, cols: number): string {
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return `${row},${col}`;
+}
+
+export async function getLatestGitHubVersion(): Promise<string | null> {
+  const now = Date.now();
+  const cachedVersion = await StoreManager.get(StoreKeys.app.CACHED_VERSION);
+  const lastCheck = await StoreManager.get(StoreKeys.app.LAST_VERSION_CHECK);
+
+  if (cachedVersion && now - Number(lastCheck) < CACHE_DURATION) {
+    console.log("Using cached version", cachedVersion);
+    return cachedVersion;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch releases from GitHub");
+      return null;
+    }
+
+    const releases: GitHubRelease[] = await response.json();
+
+    // Filter out drafts and get the first release (latest)
+    const latestRelease = releases.find((release) => !release.draft);
+
+    if (!latestRelease) {
+      console.error("No releases found");
+      return null;
+    }
+
+    // Remove 'v' prefix if present (e.g., "v0.2.0-beta.1" -> "0.2.0-beta.1")
+    const version = latestRelease.tag_name.replace(/^v/, "");
+    StoreManager.set(StoreKeys.app.CACHED_VERSION, version);
+    StoreManager.set(StoreKeys.app.LAST_VERSION_CHECK, now.toString());
+    return version;
+  } catch (error) {
+    console.error("Error checking for updates:", error);
+    return null;
+  }
 }

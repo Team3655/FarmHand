@@ -14,6 +14,11 @@ import {
   Slide,
   useMediaQuery,
   Alert,
+  Dialog,
+  DialogTitle,
+  IconButton,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import DropdownInput from "../ui/components/DropdownInput";
@@ -26,19 +31,22 @@ import SecurityIcon from "@mui/icons-material/SecurityRounded";
 import InfoIcon from "@mui/icons-material/InfoRounded";
 import SaveIcon from "@mui/icons-material/SaveRounded";
 import WarningIcon from "@mui/icons-material/WarningRounded";
-import { useState, useEffect } from "react";
+import CloseIcon from "@mui/icons-material/CloseRounded";
+import { useState, useEffect, useRef } from "react";
 import PageHeader from "../ui/PageHeader";
 import { useSettings } from "../context/SettingsContext";
 import { useNavigate } from "react-router";
 import { themeRegistry } from "../config/themes";
 import useDialog from "../hooks/useDialog";
-import UnsavedSchemaChangesDialog from "../ui/dialog/UnsavedSchemaChangesDialog";
+import UnsavedChangesDialog from "../ui/dialog/UnsavedChangesDialog";
 import NumberInput from "../ui/components/NumberInput";
 import TextInput from "../ui/components/TextInput";
+import WarningDialog from "../ui/dialog/WarningDialog";
 
 export default function Settings() {
   const { schemaName, availableSchemas } = useSchema();
-  const { setSetting, settings, settingsLoading } = useSettings();
+  const { setSetting, settings, settingsLoading, resetToDefaults } =
+    useSettings();
   const theme = useTheme();
   const navigate = useNavigate();
   const themeOptions = Object.keys(themeRegistry);
@@ -51,10 +59,15 @@ export default function Settings() {
   const [editingSettings, setEditingSettings] = useState<Settings>(settings);
   const [originalSettings, setOriginalSettings] = useState<Settings>(settings);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [warningDialogOpen, openWarningDialog, closeWarningDialog] =
+    useDialog();
+  const [licenseDialogOpen, openLicenseDialog, closeLicenseDialog] =
+    useDialog();
   const isLandscape = useMediaQuery("(orientation: landscape)");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const previousSettingsRef = useRef<Settings>(settings);
 
   const [
     unsavedChangesDialogOpen,
@@ -67,7 +80,22 @@ export default function Settings() {
     if (!settingsLoading && !isInitialized) {
       setEditingSettings(settings);
       setOriginalSettings(settings);
+      previousSettingsRef.current = settings;
       setIsInitialized(true);
+    }
+  }, [settings, settingsLoading, isInitialized]);
+
+  // Sync local settings when context settings change (e.g., after reset to defaults)
+  useEffect(() => {
+    if (!settingsLoading && isInitialized) {
+      // Only sync if settings actually changed (not just a re-render)
+      if (
+        JSON.stringify(previousSettingsRef.current) !== JSON.stringify(settings)
+      ) {
+        setEditingSettings(settings);
+        setOriginalSettings(settings);
+        previousSettingsRef.current = settings;
+      }
     }
   }, [settings, settingsLoading, isInitialized]);
 
@@ -94,11 +122,35 @@ export default function Settings() {
   };
 
   const handleSaveSettings = async () => {
+    // Validate and clamp number fields before saving
+    const validatedSettings = { ...editingSettings };
+
+    // Ensure DEVICE_ID is valid (min 1)
+    if (
+      validatedSettings.DEVICE_ID === null ||
+      validatedSettings.DEVICE_ID === undefined ||
+      validatedSettings.DEVICE_ID < 1
+    ) {
+      validatedSettings.DEVICE_ID = 1;
+    }
+
+    // Ensure EXPECTED_DEVICES_COUNT is valid (min 1, max 50)
+    if (
+      validatedSettings.EXPECTED_DEVICES_COUNT === null ||
+      validatedSettings.EXPECTED_DEVICES_COUNT === undefined ||
+      validatedSettings.EXPECTED_DEVICES_COUNT < 1
+    ) {
+      validatedSettings.EXPECTED_DEVICES_COUNT = 1;
+    } else if (validatedSettings.EXPECTED_DEVICES_COUNT > 50) {
+      validatedSettings.EXPECTED_DEVICES_COUNT = 50;
+    }
+
     // Save all settings
-    for (const [key, value] of Object.entries(editingSettings)) {
+    for (const [key, value] of Object.entries(validatedSettings)) {
       await setSetting(key as keyof Settings, value);
     }
-    setOriginalSettings(editingSettings);
+    setEditingSettings(validatedSettings);
+    setOriginalSettings(validatedSettings);
     setSnackbarOpen(true);
   };
 
@@ -140,6 +192,15 @@ export default function Settings() {
           value: editingSettings.LAST_SCHEMA_NAME || schemaName || "",
           options: availableSchemas.map((s) => s.name),
           onChange: (value: string) => handleChange("LAST_SCHEMA_NAME", value),
+        },
+        {
+          type: "switch",
+          label: "Save match on form submission",
+          description:
+            'If checked, matches will automatically be saved to match history when the "complete scout" button is pressed',
+          checked: editingSettings.AUTOSAVE_ON_COMPLETE ?? true,
+          onChange: (checked: boolean) =>
+            handleChange("AUTOSAVE_ON_COMPLETE", checked),
         },
       ],
     },
@@ -190,8 +251,8 @@ export default function Settings() {
           description: "Identify this device in match data",
           value: editingSettings.DEVICE_ID,
           onChange: (value: number | null) => {
-            const num = value === null ? 1 : Math.max(1, value);
-            handleChange("DEVICE_ID", num);
+            // Allow null values during input - min/max validation happens on blur in NumberInput
+            handleChange("DEVICE_ID", value);
           },
           inputProps: { min: 1 },
         },
@@ -201,8 +262,8 @@ export default function Settings() {
           description: "Set the total number of scouting devices",
           value: editingSettings.EXPECTED_DEVICES_COUNT,
           onChange: (value: number | null) => {
-            const num = value === null ? 1 : Math.max(1, Math.min(50, value));
-            handleChange("EXPECTED_DEVICES_COUNT", num);
+            // Allow null values during input - min/max validation happens on blur in NumberInput
+            handleChange("EXPECTED_DEVICES_COUNT", value);
           },
           inputProps: { min: 1, max: 50 },
         },
@@ -282,7 +343,6 @@ export default function Settings() {
             onChange={(value) => setting.onChange(value)}
             min={setting.inputProps.min}
             max={setting.inputProps.max}
-            fullWidth
           />
         );
       case "button":
@@ -508,7 +568,7 @@ export default function Settings() {
                   Version
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  FarmHand v0.2.0-beta.1
+                  FarmHand v0.2026.3-beta
                 </Typography>
               </Box>
               <Divider sx={{ borderColor: theme.palette.surface.outline }} />
@@ -527,29 +587,78 @@ export default function Settings() {
                   color="text.secondary"
                   gutterBottom
                 >
-                  Licenses
+                  License
                 </Typography>
                 <Button
                   variant="outlined"
                   color="info"
+                  onClick={openLicenseDialog}
                   sx={{
                     borderRadius: theme.shape.borderRadius,
                     borderWidth: 2,
                   }}
                 >
-                  View Open Source Licenses
+                  View Open Source License
                 </Button>
               </Box>
             </Stack>
           </CardContent>
         </Card>
-      </Stack>
 
-      <UnsavedSchemaChangesDialog
+        <Button variant="contained" color="warning" onClick={openWarningDialog}>
+          Reset to defaults
+        </Button>
+      </Stack>
+      <WarningDialog
+        open={warningDialogOpen}
+        onClose={closeWarningDialog}
+        onConfirm={resetToDefaults}
+        title="Are you sure"
+        message="Would you like to reset all settings to default?"
+        cancelText="Cancel"
+        confirmText="Continue Reset"
+      />
+
+      <UnsavedChangesDialog
         open={unsavedChangesDialogOpen}
         onClose={closeUnsavedChangesDialog}
         onDiscard={handleDiscardChanges}
       />
+
+      <Dialog open={licenseDialogOpen} onClose={closeLicenseDialog}>
+        <DialogTitle>
+          <IconButton onClick={closeLicenseDialog}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          MIT License Copyright (c) 2025 FRC team 3655, the Tractor Technicians. Permission is
+          hereby granted, free of charge, to any person obtaining a copy of this
+          software and associated documentation files (the "Software"), to deal
+          in the Software without restriction, including without limitation the
+          rights to use, copy, modify, merge, publish, distribute, sublicense,
+          and/or sell copies of the Software, and to permit persons to whom the
+          Software is furnished to do so, subject to the following conditions:
+          The above copyright notice and this permission notice shall be
+          included in all copies or substantial portions of the Software. THE
+          SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+          MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+          IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+          CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+          TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+          SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={closeLicenseDialog}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbarOpen}

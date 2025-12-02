@@ -149,22 +149,42 @@ export default function ArchivePage() {
                 onTeamNumberFilterChange={qrManager.setTeamNumberFilter}
               />
 
-              <Button
-                variant={qrManager.selecting ? "outlined" : "contained"}
-                color="secondary"
-                onClick={qrManager.toggleSelectionMode}
-                sx={{
-                  borderRadius: 2,
-                  ...(qrManager.selecting && {
-                    borderWidth: 2,
-                    "&:hover": {
+              <Stack direction={"row"} spacing={2}>
+                {qrManager.selecting && (
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => qrManager.selectAllCodes(true)}
+                    sx={{
+                      borderRadius: 2,
+                      ...(qrManager.selecting && {
+                        borderWidth: 2,
+                        "&:hover": {
+                          borderWidth: 2,
+                        },
+                      }),
+                    }}
+                  >
+                    Select all
+                  </Button>
+                )}
+                <Button
+                  variant={qrManager.selecting ? "outlined" : "contained"}
+                  color="secondary"
+                  onClick={qrManager.toggleSelectionMode}
+                  sx={{
+                    borderRadius: 2,
+                    ...(qrManager.selecting && {
                       borderWidth: 2,
-                    },
-                  }),
-                }}
-              >
-                {qrManager.selecting ? "Cancel" : "Select"}
-              </Button>
+                      "&:hover": {
+                        borderWidth: 2,
+                      },
+                    }),
+                  }}
+                >
+                  {qrManager.selecting ? "Cancel" : "Select"}
+                </Button>
+              </Stack>
             </Stack>
 
             <QrGrid
@@ -224,12 +244,17 @@ export default function ArchivePage() {
       <ShareDialog
         mode="match"
         qrCodeData={activeQrCode!}
+        allQrCodes={archivedQrCodes}
         open={qrDialogOpen}
         onClose={closeQrDialog}
         forQrPage
         isArchived
         onDelete={refetch}
         onUnarchive={refetch}
+        onScanned={refetch}
+        onChangeQrCode={(code) => {
+          setActiveQrCode(code);
+        }}
         canDelete
       />
 

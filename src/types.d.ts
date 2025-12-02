@@ -62,6 +62,7 @@ interface QrCode {
   data: string;
   image: string;
   archived?: boolean;
+  scanned?: boolean;
 }
 
 /**
@@ -80,6 +81,7 @@ interface Settings {
   THEME: string;
   DEVICE_ID: number;
   EXPECTED_DEVICES_COUNT: number;
+  AUTOSAVE_ON_COMPLETE: boolean;
   LEAD_SCOUT_ONLY: boolean;
   COLOR_THEME: string;
 }
@@ -91,6 +93,7 @@ type FilterOption =
   | "day"
   | "week"
   | "month"
+  | "unscanned"
   | "none";
 
 /** Options for sorting qr codes */
@@ -98,25 +101,36 @@ type SortMode = "match number" | "recent" | "none";
 
 /** The direction to sort codes by */
 type SortDirection = "ascending" | "descending";
-type ChartType = "bar" | "line" | "scatter" | "pie";
 
-/** Data about a specific Analysis, and what it contains */
 interface Analysis {
   id: number;
   name: string;
   selectedTeams: number[];
   selectedMatches: number[];
-  charts?: Chart[];
+  charts: Chart[];
   createdAt: Date;
+  schemaHash: string;
 }
 
-/** Data about a specific chart and what it shows */
 interface Chart {
   id: string;
   name: string;
-  type: "bar" | "line" | "pie" | "scatter";
-  xAxis?: string; // Field name for x-axis
-  yAxis?: string; // Field name for y-axis (can be array for multi-series)
+  type: "bar" | "line" | "pie" | "scatter" | "boxplot" | "heatmap";
+  xAxis?: string;
+  yAxis?: string;
+  groupBy?: string;
   aggregation?: "sum" | "average" | "count" | "min" | "max";
+  sortMode?: "ascending" | "descending" | "none";
+  linearInterpolation?: // for line charts
+  | "basis"
+    | "cardinal"
+    | "catmullRom"
+    | "linear"
+    | "monotoneX"
+    | "monotoneY"
+    | "natural"
+    | "step"
+    | "stepAfter"
+    | "stepBefore";
+  colorScheme?: string; // For heatmap color scheme selection
 }
-

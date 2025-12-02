@@ -12,9 +12,9 @@ export const defaultSettings: Settings = {
   LAST_SCHEMA_NAME: "2025 Reefscape",
   THEME: "system",
   DEVICE_ID: 1,
+  AUTOSAVE_ON_COMPLETE: true,
   EXPECTED_DEVICES_COUNT: 6,
   LEAD_SCOUT_ONLY: false,
-
   COLOR_THEME: "TractorTheme",
 };
 
@@ -26,6 +26,7 @@ interface SettingsContextType {
   ) => Promise<void>;
   loadSettings: () => Promise<void>;
   settingsLoading: boolean;
+  resetToDefaults: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -87,9 +88,35 @@ export default function SettingsProvider({
     }));
   }, []);
 
+  const resetToDefaults = async () => {
+    setSettingsLoading(true);
+    const newSettings = new Map<string, any>();
+    const settingKeys = Object.keys(defaultSettings) as Array<keyof Settings>;
+
+    for (const key of settingKeys) {
+      const defaultValue = defaultSettings[key as keyof Settings];
+      const storeKey = StoreKeys.settings[key];
+      
+      if (storeKey) {
+        await StoreManager.set(storeKey, String(defaultValue));
+      }
+
+      newSettings.set(key, defaultValue);
+    }
+
+    setSettings(Object.fromEntries(newSettings) as Settings);
+    setSettingsLoading(false);
+  };
+
   return (
     <SettingsContext.Provider
-      value={{ settings, setSetting, loadSettings, settingsLoading }}
+      value={{
+        settings,
+        setSetting,
+        loadSettings,
+        settingsLoading,
+        resetToDefaults,
+      }}
     >
       {children}
     </SettingsContext.Provider>
