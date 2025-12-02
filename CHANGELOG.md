@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep A Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2026.3-beta.1]
+
+### Fixed
+
+- UI with complete scout dialog on mobile
+- Back arrow button on the analysis viewing page
+
 ## [0.2026.3-beta]
 
 ### Added
