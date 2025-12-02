@@ -22,7 +22,6 @@ import PageHeader from "../ui/PageHeader";
 import { useSettings, defaultSettings } from "../context/SettingsContext";
 import { useAsyncFetch } from "../hooks/useAsyncFetch";
 import { useSchema } from "../context/SchemaContext";
-import { createSchemaHash } from "../utils/GeneralUtils";
 import { fetchQrCodes, validateQR, decodeQR } from "../utils/QrUtils";
 import StoreManager, { StoreKeys } from "../utils/StoreManager";
 import { useAnalysis } from "../context/AnalysisContext";
@@ -61,9 +60,7 @@ export default function LeadScoutDashboard() {
       const matchesMap = new Map<number, Array<{ deviceID: number }>>();
 
       // Get all fields from the current schema
-      const allFields = schema.sections.flatMap(
-        (section) => section.fields
-      );
+      const allFields = schema.sections.flatMap((section) => section.fields);
 
       const matchNumberIndex = allFields.findIndex(
         (field) => field.name === "Match Number"
@@ -82,7 +79,7 @@ export default function LeadScoutDashboard() {
           if (decoded && decoded.schemaHash) {
             // Only process QR codes that match the current schema
             if (decoded.schemaHash !== currentSchemaHash) continue;
-            
+
             // Exclude data from the host device (ID 0)
             if (decoded.deviceId === 0) continue;
 
@@ -134,10 +131,10 @@ export default function LeadScoutDashboard() {
       return devices && devices.length === EXPECTED_DEVICES_COUNT;
     }).length;
     const incomplete = allMatchNumbers.length - complete;
-    
+
     const missing = allMatchNumbers.filter((matchNum) => {
       const devices = receivedMatches.get(matchNum);
-      return devices && devices.length === 0;
+      return !devices || devices.length === 0;
     }).length;
 
     return { complete, incomplete, missing };
@@ -489,6 +486,7 @@ export default function LeadScoutDashboard() {
                 console.log("Devices for match", matchNum, devices);
                 const scoutCount = devices ? devices.length : 0;
                 const isComplete = scoutCount >= EXPECTED_DEVICES_COUNT;
+                const isMissing = scoutCount === 0;
                 const receivedDeviceIDs = devices
                   ? devices.map((d) => d.deviceID)
                   : [];
@@ -497,17 +495,40 @@ export default function LeadScoutDashboard() {
                   (_, i) => i + 1
                 ).filter((id) => !receivedDeviceIDs.includes(id));
 
+                // Determine color based on match status
+                const borderColor = isComplete
+                  ? theme.palette.success.main
+                  : isMissing
+                  ? theme.palette.error.main
+                  : theme.palette.warning.main;
+                const backgroundColor = isComplete
+                  ? `${theme.palette.success.main}10`
+                  : isMissing
+                  ? `${theme.palette.error.main}10`
+                  : `${theme.palette.warning.main}10`;
+                const iconBackgroundColor = isComplete
+                  ? `${theme.palette.success.main}20`
+                  : isMissing
+                  ? `${theme.palette.error.main}20`
+                  : `${theme.palette.warning.main}20`;
+                const iconColor = isComplete
+                  ? theme.palette.success.main
+                  : isMissing
+                  ? theme.palette.error.main
+                  : theme.palette.warning.main;
+                const chipColor = isComplete
+                  ? "success"
+                  : isMissing
+                  ? "error"
+                  : "warning";
+
                 return (
                   <Accordion
                     key={matchNum}
                     elevation={0}
                     sx={{
                       backgroundColor: "transparent",
-                      border: `2px solid ${
-                        isComplete
-                          ? theme.palette.success.main
-                          : theme.palette.warning.main
-                      }`,
+                      border: `2px solid ${borderColor}`,
                       borderRadius: 3,
                       "&:before": {
                         display: "none",
@@ -520,9 +541,7 @@ export default function LeadScoutDashboard() {
                     <AccordionSummary
                       expandIcon={<ExpandIcon />}
                       sx={{
-                        backgroundColor: isComplete
-                          ? `${theme.palette.success.main}10`
-                          : `${theme.palette.warning.main}10`,
+                        backgroundColor: backgroundColor,
                         borderRadius: 3,
                         "&.Mui-expanded": {
                           borderBottomLeftRadius: 0,
@@ -544,12 +563,8 @@ export default function LeadScoutDashboard() {
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            backgroundColor: isComplete
-                              ? `${theme.palette.success.main}20`
-                              : `${theme.palette.warning.main}20`,
-                            color: isComplete
-                              ? theme.palette.success.main
-                              : theme.palette.warning.main,
+                            backgroundColor: iconBackgroundColor,
+                            color: iconColor,
                           }}
                         >
                           {isComplete ? (
@@ -563,7 +578,7 @@ export default function LeadScoutDashboard() {
                         </Box>
                         <Chip
                           label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
-                          color={isComplete ? "success" : "warning"}
+                          color={chipColor}
                           sx={{
                             fontWeight: 600,
                             fontFamily: theme.typography.body1,
@@ -573,11 +588,7 @@ export default function LeadScoutDashboard() {
                     </AccordionSummary>
                     <AccordionDetails
                       sx={{
-                        borderTop: `2px solid ${
-                          isComplete
-                            ? theme.palette.success.main
-                            : theme.palette.warning.main
-                        }`,
+                        borderTop: `2px solid ${borderColor}`,
                         backgroundColor: theme.palette.background.paper,
                         borderBottomLeftRadius: 3,
                         borderBottomRightRadius: 3,
