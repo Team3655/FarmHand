@@ -13,7 +13,6 @@ import {
   CardContent,
   Button,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/DashboardRounded";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScannerRounded";
 import ExpandIcon from "@mui/icons-material/ExpandMoreRounded";
