@@ -378,7 +378,7 @@ export default function AnalysisViewer() {
     if (hasUnsavedChanges) {
       openUnsavedChangesDialog();
     } else {
-      navigate("/analyes");
+      navigate("/analyses");
     }
   };
 
