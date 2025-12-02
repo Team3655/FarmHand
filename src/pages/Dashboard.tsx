@@ -22,7 +22,13 @@ import PageHeader from "../ui/PageHeader";
 import { useSettings, defaultSettings } from "../context/SettingsContext";
 import { useAsyncFetch } from "../hooks/useAsyncFetch";
 import { useSchema } from "../context/SchemaContext";
-import { fetchQrCodes, validateQR, decodeQR } from "../utils/QrUtils";
+import {
+  fetchQrCodes,
+  validateQR,
+  decodeQR,
+  getDataFromQrName,
+  DecodedQr,
+} from "../utils/QrUtils";
 import StoreManager, { StoreKeys } from "../utils/StoreManager";
 import { useAnalysis } from "../context/AnalysisContext";
 import ChartRenderer from "../ui/ChartRenderer";
@@ -43,7 +49,27 @@ export default function LeadScoutDashboard() {
   const { analyses } = useAnalysis();
   const [qrCodes] = useAsyncFetch(fetchQrCodes);
   const [receivedMatches, setReceivedMatches] = useState<
-    Map<number, Array<{ deviceID: number }>>
+    Map<
+      number,
+      Array<{
+        deviceID: number;
+        qr: QrCode;
+        decoded: DecodedQr;
+        teamNumber: number | null;
+        timestamp: number | null;
+      }>
+    >
+  >(new Map());
+  const [deviceHistory, setDeviceHistory] = useState<
+    Map<
+      number,
+      {
+        deviceID: number;
+        teamNumber: number | null;
+        matchNumber: number;
+        timestamp: number | null;
+      }
+    >
   >(new Map());
   const [pinnedCharts, setPinnedCharts] = useState<PinnedChart[]>([]);
 
@@ -57,13 +83,34 @@ export default function LeadScoutDashboard() {
 
       const nonArchivedQrCodes = qrCodes.filter((qr) => !qr.archived);
 
-      const matchesMap = new Map<number, Array<{ deviceID: number }>>();
+      const matchesMap = new Map<
+        number,
+        Array<{
+          deviceID: number;
+          qr: QrCode;
+          decoded: DecodedQr;
+          teamNumber: number | null;
+          timestamp: number | null;
+        }>
+      >();
+      const deviceHistoryMap = new Map<
+        number,
+        {
+          deviceID: number;
+          teamNumber: number | null;
+          matchNumber: number;
+          timestamp: number | null;
+        }
+      >();
 
       // Get all fields from the current schema
       const allFields = schema.sections.flatMap((section) => section.fields);
 
       const matchNumberIndex = allFields.findIndex(
         (field) => field.name === "Match Number"
+      );
+      const teamNumberIndex = allFields.findIndex(
+        (field) => field.name === "Team Number"
       );
 
       // If current schema doesn't have a match number field, return empty
@@ -89,13 +136,74 @@ export default function LeadScoutDashboard() {
             const matchNumber = Number(matchNumberValue);
             if (isNaN(matchNumber) || matchNumber === 0) continue;
 
+            // Extract team number
+            let teamNumber: number | null = null;
+            if (teamNumberIndex !== -1) {
+              const teamNumberValue = decoded.data[teamNumberIndex];
+              if (teamNumberValue !== null && teamNumberValue !== undefined) {
+                const teamNum = Number(teamNumberValue);
+                if (!isNaN(teamNum)) {
+                  teamNumber = teamNum;
+                }
+              }
+            }
+
+            // Extract timestamp from QR code name
+            let timestamp: number | null = null;
+            try {
+              const qrNameData = getDataFromQrName(qr.name);
+              if (qrNameData.Timestamp) {
+                timestamp = parseInt(qrNameData.Timestamp) * 1000; // Convert to milliseconds
+              }
+            } catch {
+              // If timestamp extraction fails, use current time as fallback
+              timestamp = Date.now();
+            }
+
             if (matchNumber) {
               if (!matchesMap.has(matchNumber)) {
                 matchesMap.set(matchNumber, []);
               }
               const devices = matchesMap.get(matchNumber)!;
-              if (!devices.some((d) => d.deviceID === decoded.deviceId)) {
-                devices.push({ deviceID: decoded.deviceId! });
+              // Update or add device entry (keep the most recent one)
+              const existingIndex = devices.findIndex(
+                (d) => d.deviceID === decoded.deviceId
+              );
+              const deviceEntry = {
+                deviceID: decoded.deviceId!,
+                qr,
+                decoded,
+                teamNumber,
+                timestamp,
+              };
+
+              if (existingIndex !== -1) {
+                // Replace if this QR code is newer
+                if (
+                  timestamp &&
+                  (!devices[existingIndex].timestamp ||
+                    timestamp > devices[existingIndex].timestamp!)
+                ) {
+                  devices[existingIndex] = deviceEntry;
+                }
+              } else {
+                devices.push(deviceEntry);
+              }
+
+              // Track device history across all matches (keep the most recent)
+              const existingHistory = deviceHistoryMap.get(decoded.deviceId);
+              if (
+                !existingHistory ||
+                (timestamp &&
+                  (!existingHistory.timestamp ||
+                    timestamp > existingHistory.timestamp))
+              ) {
+                deviceHistoryMap.set(decoded.deviceId, {
+                  deviceID: decoded.deviceId,
+                  teamNumber,
+                  matchNumber,
+                  timestamp,
+                });
               }
             }
           }
@@ -104,6 +212,7 @@ export default function LeadScoutDashboard() {
         }
       }
       setReceivedMatches(matchesMap);
+      setDeviceHistory(deviceHistoryMap);
     };
 
     processQrCodes();
@@ -112,6 +221,23 @@ export default function LeadScoutDashboard() {
   // Define the expected number of devices
   const EXPECTED_DEVICES_COUNT =
     settings.EXPECTED_DEVICES_COUNT || defaultSettings.EXPECTED_DEVICES_COUNT;
+
+  // Helper function to format time difference
+  const formatTimeAgo = (timestamp: number | null): string => {
+    if (!timestamp) return "Unknown time";
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60)
+      return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+    return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  };
 
   // Calculate the maximum match number to iterate through
   const maxMatchNumber = useMemo(() => {
@@ -481,186 +607,312 @@ export default function LeadScoutDashboard() {
             </Box>
           ) : (
             <Stack spacing={1.5}>
-              {allMatchNumbers.map((matchNum) => {
-                const devices = receivedMatches.get(matchNum);
-                console.log("Devices for match", matchNum, devices);
-                const scoutCount = devices ? devices.length : 0;
-                const isComplete = scoutCount >= EXPECTED_DEVICES_COUNT;
-                const isMissing = scoutCount === 0;
-                const receivedDeviceIDs = devices
-                  ? devices.map((d) => d.deviceID)
-                  : [];
-                const missingDeviceIDs = Array.from(
-                  { length: EXPECTED_DEVICES_COUNT },
-                  (_, i) => i + 1
-                ).filter((id) => !receivedDeviceIDs.includes(id));
+              {allMatchNumbers
+                .slice(0)
+                .reverse()
+                .map((matchNum) => {
+                  const devices = receivedMatches.get(matchNum);
+                  console.log("Devices for match", matchNum, devices);
+                  const scoutCount = devices ? devices.length : 0;
+                  const isComplete = scoutCount >= EXPECTED_DEVICES_COUNT;
+                  const isMissing = scoutCount === 0;
+                  const receivedDeviceIDs = devices
+                    ? devices.map((d) => d.deviceID)
+                    : [];
+                  const missingDeviceIDs = Array.from(
+                    { length: EXPECTED_DEVICES_COUNT },
+                    (_, i) => i + 1
+                  ).filter((id) => !receivedDeviceIDs.includes(id));
 
-                // Determine color based on match status
-                const borderColor = isComplete
-                  ? theme.palette.success.main
-                  : isMissing
-                  ? theme.palette.error.main
-                  : theme.palette.warning.main;
-                const backgroundColor = isComplete
-                  ? `${theme.palette.success.main}10`
-                  : isMissing
-                  ? `${theme.palette.error.main}10`
-                  : `${theme.palette.warning.main}10`;
-                const iconBackgroundColor = isComplete
-                  ? `${theme.palette.success.main}20`
-                  : isMissing
-                  ? `${theme.palette.error.main}20`
-                  : `${theme.palette.warning.main}20`;
-                const iconColor = isComplete
-                  ? theme.palette.success.main
-                  : isMissing
-                  ? theme.palette.error.main
-                  : theme.palette.warning.main;
-                const chipColor = isComplete
-                  ? "success"
-                  : isMissing
-                  ? "error"
-                  : "warning";
+                  // Create a map of device data for easy lookup
+                  const deviceDataMap = new Map<
+                    number,
+                    {
+                      deviceID: number;
+                      qr: QrCode;
+                      decoded: DecodedQr;
+                      teamNumber: number | null;
+                      timestamp: number | null;
+                    }
+                  >();
+                  if (devices) {
+                    devices.forEach((d) => {
+                      deviceDataMap.set(d.deviceID, d);
+                    });
+                  }
 
-                return (
-                  <Accordion
-                    key={matchNum}
-                    elevation={0}
-                    sx={{
-                      backgroundColor: "transparent",
-                      border: `2px solid ${borderColor}`,
-                      borderRadius: 3,
-                      "&:before": {
-                        display: "none",
-                      },
-                      "&.Mui-expanded": {
-                        margin: 0,
-                      },
-                    }}
-                  >
-                    <AccordionSummary
-                      expandIcon={<ExpandIcon />}
+                  // Determine color based on match status
+                  const borderColor = isComplete
+                    ? theme.palette.success.main
+                    : isMissing
+                    ? theme.palette.error.main
+                    : theme.palette.warning.main;
+                  const backgroundColor = isComplete
+                    ? `${theme.palette.success.main}10`
+                    : isMissing
+                    ? `${theme.palette.error.main}10`
+                    : `${theme.palette.warning.main}10`;
+                  const iconBackgroundColor = isComplete
+                    ? `${theme.palette.success.main}20`
+                    : isMissing
+                    ? `${theme.palette.error.main}20`
+                    : `${theme.palette.warning.main}20`;
+                  const iconColor = isComplete
+                    ? theme.palette.success.main
+                    : isMissing
+                    ? theme.palette.error.main
+                    : theme.palette.warning.main;
+                  const chipColor = isComplete
+                    ? "success"
+                    : isMissing
+                    ? "error"
+                    : "warning";
+
+                  return (
+                    <Accordion
+                      key={matchNum}
+                      elevation={0}
                       sx={{
-                        backgroundColor: backgroundColor,
+                        backgroundColor: "transparent",
+                        border: `2px solid ${borderColor}`,
                         borderRadius: 3,
+                        "&:before": {
+                          display: "none",
+                        },
                         "&.Mui-expanded": {
-                          borderBottomLeftRadius: 0,
-                          borderBottomRightRadius: 0,
+                          margin: 0,
                         },
                       }}
                     >
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={2}
-                        sx={{ flexGrow: 1 }}
+                      <AccordionSummary
+                        expandIcon={
+                          <ExpandIcon
+                            sx={{ color: theme.typography.body1.color }}
+                          />
+                        }
+                        sx={{
+                          backgroundColor: backgroundColor,
+                          borderRadius: 3,
+                          "&.Mui-expanded": {
+                            borderBottomLeftRadius: 0,
+                            borderBottomRightRadius: 0,
+                          },
+                        }}
                       >
-                        <Box
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 2,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: iconBackgroundColor,
-                            color: iconColor,
-                          }}
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={2}
+                          sx={{ flexGrow: 1 }}
                         >
-                          {isComplete ? (
-                            <CheckCircleIcon />
-                          ) : (
-                            <ErrorOutlineIcon />
-                          )}
-                        </Box>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6">Match {matchNum}</Typography>
-                        </Box>
-                        <Chip
-                          label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
-                          color={chipColor}
-                          sx={{
-                            fontWeight: 600,
-                            fontFamily: theme.typography.body1,
-                          }}
-                        />
-                      </Stack>
-                    </AccordionSummary>
-                    <AccordionDetails
-                      sx={{
-                        borderTop: `2px solid ${borderColor}`,
-                        backgroundColor: theme.palette.background.paper,
-                        borderBottomLeftRadius: 3,
-                        borderBottomRightRadius: 3,
-                        p: 3,
-                      }}
-                    >
-                      {scoutCount === 0 ? (
-                        <Typography variant="body1" color="text.secondary">
-                          No scouts received for this match.
-                        </Typography>
-                      ) : (
-                        <Stack spacing={2}>
-                          {receivedDeviceIDs.length > 0 && (
-                            <Box>
-                              <Typography
-                                variant="subtitle2"
-                                sx={{ fontWeight: 600, mb: 1 }}
+                          <Box
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 2,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: iconBackgroundColor,
+                              color: iconColor,
+                            }}
+                          >
+                            {isComplete ? (
+                              <CheckCircleIcon />
+                            ) : (
+                              <ErrorOutlineIcon />
+                            )}
+                          </Box>
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="h6">
+                              Match {matchNum}
+                            </Typography>
+                            {missingDeviceIDs.length > 0 && (
+                              <Stack
+                                direction="row"
+                                spacing={0.5}
+                                sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}
                               >
-                                Received from Devices:
-                              </Typography>
-                              <Stack direction="row" flexWrap="wrap" gap={1}>
-                                {receivedDeviceIDs
-                                  .sort((a, b) => a - b)
-                                  .map((id) => (
-                                    <Chip
-                                      key={id}
-                                      label={`Device ${id}`}
-                                      color="success"
-                                      variant="outlined"
-                                      sx={{
-                                        borderWidth: 2,
-                                        fontWeight: 600,
-                                        fontFamily: theme.typography.body1,
-                                      }}
-                                    />
-                                  ))}
-                              </Stack>
-                            </Box>
-                          )}
-                          {missingDeviceIDs.length > 0 && (
-                            <Box>
-                              <Typography
-                                variant="subtitle2"
-                                sx={{ fontWeight: 600, mb: 1 }}
-                              >
-                                Missing from Devices:
-                              </Typography>
-                              <Stack direction="row" flexWrap="wrap" gap={1}>
                                 {missingDeviceIDs
                                   .sort((a, b) => a - b)
+                                  .slice(0, 6)
                                   .map((id) => (
                                     <Chip
                                       key={id}
-                                      label={`Device ${id}`}
+                                      label={`D${id}`}
+                                      size="small"
                                       color="error"
                                       variant="outlined"
                                       sx={{
-                                        borderWidth: 2,
+                                        height: 20,
+                                        fontSize: "0.7rem",
+                                        borderWidth: 1.5,
                                         fontWeight: 600,
-                                        fontFamily: theme.typography.body1,
                                       }}
                                     />
                                   ))}
+                                {missingDeviceIDs.length > 6 && (
+                                  <Chip
+                                    label={`+${missingDeviceIDs.length - 6}`}
+                                    size="small"
+                                    color="error"
+                                    variant="outlined"
+                                    sx={{
+                                      height: 20,
+                                      fontSize: "0.7rem",
+                                      borderWidth: 1.5,
+                                      fontWeight: 600,
+                                    }}
+                                  />
+                                )}
                               </Stack>
-                            </Box>
-                          )}
+                            )}
+                          </Box>
+                          <Chip
+                            label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
+                            color={chipColor}
+                            sx={{
+                              fontWeight: 600,
+                              fontFamily: theme.typography.body1,
+                            }}
+                          />
                         </Stack>
-                      )}
-                    </AccordionDetails>
-                  </Accordion>
-                );
-              })}
+                      </AccordionSummary>
+                      <AccordionDetails
+                        sx={{
+                          borderTop: `2px solid ${borderColor}`,
+                          backgroundColor: theme.palette.background.paper,
+                          borderBottomLeftRadius: 3,
+                          borderBottomRightRadius: 3,
+                          p: 3,
+                        }}
+                      >
+                        <Stack spacing={1.5}>
+                          {Array.from(
+                            { length: EXPECTED_DEVICES_COUNT },
+                            (_, i) => i + 1
+                          )
+                            .sort((a, b) => a - b)
+                            .map((deviceId) => {
+                              const deviceData = deviceDataMap.get(deviceId);
+                              const isReceived = !!deviceData;
+
+                              return (
+                                <Paper
+                                  key={deviceId}
+                                  elevation={0}
+                                  sx={{
+                                    p: 2,
+                                    border: `1.5px solid ${
+                                      isReceived
+                                        ? theme.palette.success.main
+                                        : theme.palette.error.main
+                                    }`,
+                                    borderRadius: 2,
+                                    backgroundColor: isReceived
+                                      ? `${theme.palette.success.main}05`
+                                      : `${theme.palette.error.main}05`,
+                                  }}
+                                >
+                                  <Stack
+                                    direction="row"
+                                    alignItems="center"
+                                    spacing={2}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 1.5,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: isReceived
+                                          ? `${theme.palette.success.main}20`
+                                          : `${theme.palette.error.main}20`,
+                                        color: isReceived
+                                          ? theme.palette.success.main
+                                          : theme.palette.error.main,
+                                        fontWeight: 600,
+                                        fontSize: "0.875rem",
+                                      }}
+                                    >
+                                      {deviceId}
+                                    </Box>
+                                    <Box sx={{ flexGrow: 1 }}>
+                                      <Typography
+                                        variant="subtitle2"
+                                        sx={{ fontWeight: 600 }}
+                                      >
+                                        Device {deviceId}
+                                      </Typography>
+                                      {(() => {
+                                        const history =
+                                          deviceHistory.get(deviceId);
+                                        if (isReceived && deviceData) {
+                                          // Show current match data
+                                          return (
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{ mt: 0.25 }}
+                                            >
+                                              {deviceData.teamNumber
+                                                ? `Team ${deviceData.teamNumber} • `
+                                                : ""}
+                                              Match {matchNum} •{" "}
+                                              {formatTimeAgo(
+                                                deviceData.timestamp
+                                              )}
+                                            </Typography>
+                                          );
+                                        } else if (history) {
+                                          // Show last received data from history
+                                          return (
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{ mt: 0.25 }}
+                                            >
+                                              Last received:{" "}
+                                              {history.teamNumber
+                                                ? `Team ${history.teamNumber} `
+                                                : ""}
+                                              Match {history.matchNumber},{" "}
+                                              {formatTimeAgo(history.timestamp)}
+                                            </Typography>
+                                          );
+                                        } else {
+                                          // No data ever received
+                                          return (
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{ mt: 0.25 }}
+                                            >
+                                              No data received
+                                            </Typography>
+                                          );
+                                        }
+                                      })()}
+                                    </Box>
+                                    <Chip
+                                      label={
+                                        isReceived ? "Received" : "Missing"
+                                      }
+                                      color={isReceived ? "success" : "error"}
+                                      size="small"
+                                      sx={{ fontWeight: 600 }}
+                                    />
+                                  </Stack>
+                                </Paper>
+                              );
+                            })}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  );
+                })}
             </Stack>
           )}
         </Paper>
