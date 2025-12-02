@@ -62,6 +62,7 @@ interface QrCode {
   data: string;
   image: string;
   archived?: boolean;
+  scanned?: boolean;
 }
 
 /**
@@ -80,6 +81,7 @@ interface Settings {
   THEME: string;
   DEVICE_ID: number;
   EXPECTED_DEVICES_COUNT: number;
+  AUTOSAVE_ON_COMPLETE: boolean;
   LEAD_SCOUT_ONLY: boolean;
   COLOR_THEME: string;
 }
@@ -91,6 +93,7 @@ type FilterOption =
   | "day"
   | "week"
   | "month"
+  | "unscanned"
   | "none";
 
 /** Options for sorting qr codes */

@@ -14,10 +14,6 @@ import {
   Slide,
   useMediaQuery,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogActions,
-  DialogContent,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import DropdownInput from "../ui/components/DropdownInput";
@@ -39,6 +35,7 @@ import useDialog from "../hooks/useDialog";
 import UnsavedChangesDialog from "../ui/dialog/UnsavedChangesDialog";
 import NumberInput from "../ui/components/NumberInput";
 import TextInput from "../ui/components/TextInput";
+import WarningDialog from "../ui/dialog/WarningDialog";
 
 export default function Settings() {
   const { schemaName, availableSchemas } = useSchema();
@@ -187,6 +184,15 @@ export default function Settings() {
           value: editingSettings.LAST_SCHEMA_NAME || schemaName || "",
           options: availableSchemas.map((s) => s.name),
           onChange: (value: string) => handleChange("LAST_SCHEMA_NAME", value),
+        },
+        {
+          type: "switch",
+          label: "Save match on form submission",
+          description:
+            'If checked, matches will automatically be saved to match history when the "complete scout" button is pressed',
+          checked: editingSettings.AUTOSAVE_ON_COMPLETE ?? true,
+          onChange: (checked: boolean) =>
+            handleChange("AUTOSAVE_ON_COMPLETE", checked),
         },
       ],
     },
@@ -594,23 +600,15 @@ export default function Settings() {
           Reset to defaults
         </Button>
       </Stack>
-
-      <Dialog open={warningDialogOpen}>
-        <DialogTitle>
-          <WarningIcon sx={{ mr: 1 }} color="warning" /> Are you sure?
-        </DialogTitle>
-        <DialogContent>
-          Would you like to reset all settings to defaults?
-        </DialogContent>
-        <DialogActions>
-          <Button variant="text" color="primary" onClick={closeWarningDialog}>
-            Cancel
-          </Button>
-          <Button variant="contained" color="warning" onClick={resetToDefaults}>
-            Continue Reset
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <WarningDialog
+        open={warningDialogOpen}
+        onClose={closeWarningDialog}
+        onConfirm={resetToDefaults}
+        title="Are you sure"
+        message="Would you like to reset all settings to default?"
+        cancelText="Cancel"
+        confirmText="Continue Reset"
+      />
 
       <UnsavedChangesDialog
         open={unsavedChangesDialogOpen}
