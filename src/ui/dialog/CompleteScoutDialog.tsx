@@ -79,7 +79,6 @@ export default function CompleteScoutDialog({
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth={isLandscape ? "lg" : "md"}
       slotProps={{
         paper: {
           elevation: 24,
@@ -114,18 +113,19 @@ export default function CompleteScoutDialog({
         {/* QR Code Section */}
         <Box
           sx={{
-            flexShrink: 0,
+            flexShrink: 1, // Changed from 0 to 1
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
             gap: 2,
-            minWidth: isLandscape ? "300px" : "100%",
+            minWidth: isLandscape ? "100px" : "100%", // Reduced from 300px
+            maxWidth: isLandscape ? "30%" : "100%", // Added max width constraint
           }}
         >
           <Box
             sx={{
-              borderRadius: 3,
+              borderRadius: 3,  
               overflow: "hidden",
               border: `2px solid ${theme.palette.divider}`,
               boxShadow: `0 4px 12px ${theme.palette.primary.main}15`,
@@ -136,8 +136,8 @@ export default function CompleteScoutDialog({
               src={`data:image/svg+xml;base64,${btoa(qrCode.image)}`}
               alt="QR Code"
               style={{
-                width: isLandscape ? "300px" : "100%",
-                maxWidth: "400px",
+                width: "100%", // Changed from fixed values
+                maxWidth: isLandscape ? "250px" : "400px", // Responsive max width
                 display: "block",
               }}
             />
@@ -162,10 +162,7 @@ export default function CompleteScoutDialog({
             overflow: "auto",
           }}
         >
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 600, mb: 2 }}
-          >
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             Match Data Overview
           </Typography>
           <Stack spacing={2}>
@@ -271,4 +268,3 @@ export default function CompleteScoutDialog({
     </Dialog>
   );
 }
-
