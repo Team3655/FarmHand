@@ -248,6 +248,7 @@ export default function QRPage() {
               sortMode={qrManager.sortMode}
               sortDirection={qrManager.sortDirection}
             />
+
           </Box>
         </>
       )}
