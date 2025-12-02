@@ -1,4 +1,5 @@
-import { Box, Grid, Typography } from "@mui/material";
+import { Box, Grid, Stack, Tooltip, Typography } from "@mui/material";
+import HelpIcon from "@mui/icons-material/HelpRounded";
 import QrCard from "./QrCard";
 
 interface QrGridProps {
@@ -48,12 +49,20 @@ export default function QrGrid(props: QrGridProps) {
       {selecting && invalidQrCodes.length > 0 && (
         <>
           <Box onClick={(e) => e.stopPropagation()}>
-            <Typography
-              variant="h6"
-              sx={{ mt: 4, mb: 2, color: "text.secondary" }}
-            >
-              Incompatible Codes
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 4, mb: 2 }}>
+              <Typography variant="h6" sx={{ color: "text.secondary" }}>
+                Incompatible Codes
+              </Typography>
+              {
+                <Tooltip
+                  title="These codes may contain matches that were scouted using a different schema than your currently selected codes. Selected codes must me made with the same schema to export properly. If you wish to select one of these codes, try deselecting other codes first."
+                  arrow
+                  placement="top"
+                >
+                  <HelpIcon />
+                </Tooltip>
+              }
+            </Stack>
             <Grid container spacing={2}>
               {invalidQrCodes.map((qr, i) => (
                 <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
