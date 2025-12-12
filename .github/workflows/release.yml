@@ -104,7 +104,7 @@ jobs:
             artifact-name: macos-arm64
           - platform: ios
             runs-on: macos-latest
-            target: aarch64
+            target: aarch64-apple-ios
             artifact-name: ios-app
           # In the future i can add linux maybe
           # - platform: linux
