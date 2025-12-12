@@ -33,11 +33,11 @@
     ],
     "macOS": {
       "entitlements": "Entitlements.plist",
-      "infoPlist": "Info.plist",
-      "signingIdentity": null
+      "infoPlist": "Info.plist"
     },
     "iOS": {
-      "developmentTeam": null
+      "minimumSystemVersion": "14.0",
+      "bundleVersion": "0.2026.3"
     }
   }
 }
