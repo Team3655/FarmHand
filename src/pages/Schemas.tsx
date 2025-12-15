@@ -115,7 +115,7 @@ export default function Schemas() {
 
   const handleRenameSchema = async (newSchemaName: string) => {
     const trimmedName = newSchemaName.trim();
-    if (!schemaToRename || !trimmedName) {
+    if (!schemaToRename || !trimmedName || trimmedName === schemaToRename.name) {
       closeSchemaRenameDialog();
       return;
     }
@@ -282,7 +282,7 @@ export default function Schemas() {
                           color="primary"
                           startIcon={<EditIcon />}
                         >
-                          Rename
+                          Confirm
                         </Button>
                         <IconButton
                           onClick={(e) => {

@@ -229,9 +229,13 @@ function Layout({ children }: { children: React.ReactNode }) {
     <>
       <Box
         sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
           width: "100%",
           height: "env(safe-area-inset-top, 0px)",
           backgroundColor: theme.palette.primary.dark,
+          zIndex: 3000,
         }}
       />
       <Slide appear={false} direction="down" in={!hideHeader}>
@@ -244,6 +248,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             backgroundColor: theme.palette.primary.main,
             paddingLeft: "env(safe-area-inset-left, 0px)",
             paddingRight: "env(safe-area-inset-right, 0px)",
+            paddingTop: "env(safe-area-inset-top, 0px)",
             borderTopRightRadius: 0,
             borderTopLeftRadius: 0,
             boxShadow: "none",
@@ -270,7 +275,11 @@ function Layout({ children }: { children: React.ReactNode }) {
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip
-                label={`Device ID: ${settings.DEVICE_ID}`}
+                label={
+                  settings.LEAD_SCOUT_ONLY
+                    ? "Lead Scouter"
+                    : `Device ID: ${settings.DEVICE_ID}`
+                }
                 size="small"
                 sx={{
                   backgroundColor: theme.palette.primary.dark,
