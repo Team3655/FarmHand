@@ -635,17 +635,6 @@ export default function SchemaEditor() {
             }
             trailingComponent={
               <Stack direction="row" spacing={2}>
-                <IconButton
-                  onClick={openShareDialog}
-                  sx={{
-                    color: theme.palette.secondary.main,
-                    "&:hover": {
-                      backgroundColor: `${theme.palette.secondary.main}20`,
-                    },
-                  }}
-                >
-                  <ShareIcon />
-                </IconButton>
                 <Stack direction="column" spacing={2} alignItems="center">
                   {isEditable && hasUnsavedChanges && (
                     <Chip
@@ -672,6 +661,17 @@ export default function SchemaEditor() {
                     </Button>
                   )}
                 </Stack>
+                <IconButton
+                  onClick={openShareDialog}
+                  sx={{
+                    color: theme.palette.secondary.main,
+                    "&:hover": {
+                      backgroundColor: `${theme.palette.secondary.main}20`,
+                    },
+                  }}
+                >
+                  <ShareIcon />
+                </IconButton>
               </Stack>
             }
           />

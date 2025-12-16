@@ -13,6 +13,7 @@ import {
   Snackbar,
   Slide,
   Alert,
+  Divider,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router";
 import AddIcon from "@mui/icons-material/AddRounded";
@@ -115,7 +116,11 @@ export default function Schemas() {
 
   const handleRenameSchema = async (newSchemaName: string) => {
     const trimmedName = newSchemaName.trim();
-    if (!schemaToRename || !trimmedName || trimmedName === schemaToRename.name) {
+    if (
+      !schemaToRename ||
+      !trimmedName ||
+      trimmedName === schemaToRename.name
+    ) {
       closeSchemaRenameDialog();
       return;
     }
@@ -214,6 +219,8 @@ export default function Schemas() {
                 border: `2px solid ${theme.palette.divider}`,
                 borderRadius: 3,
                 transition: "all 0.3s ease",
+                px: 2,
+                py: 2,
                 cursor: "pointer",
                 "&:hover": {
                   borderColor: theme.palette.primary.main,
@@ -222,35 +229,37 @@ export default function Schemas() {
               }}
               onClick={() => handleEditSchema(s.name)}
             >
-              <CardContent>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
+              <Stack
+                direction={"row"}
+                alignItems={"center"}
+                spacing={2}
+                sx={{ mb: 1, width: "100%" }}
+              >
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: `${theme.palette.primary.main}20`,
+                    color: theme.palette.primary.main,
+                    flexShrink: 0,
+                  }}
                 >
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={2}
-                    sx={{ flexGrow: 1 }}
-                  >
-                    <Box
-                      sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: `${theme.palette.primary.main}20`,
-                        color: theme.palette.primary.main,
-                      }}
-                    >
-                      <SchemaIcon />
-                    </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Typography variant="h6">{s.name}</Typography>
+                  <SchemaIcon />
+                </Box>
+                <Stack direction={"column"} sx={{ minWidth: 0 }}>
+                  <Typography variant="h6" noWrap>
+                    {s.name}
+                  </Typography>
+                  <Stack direction={"row"} spacing={2}>
+                    <Typography variant="body1" color="text.secondary">
+                      {s.schema.sections?.length || 0} sections
+                    </Typography>
+                    {s.type === "default" && (
+                      <Box>
                         {s.type === "default" && (
                           <Chip
                             label="Built-in"
@@ -263,15 +272,17 @@ export default function Schemas() {
                             }}
                           />
                         )}
-                      </Stack>
-                      <Typography variant="body1" color="text.secondary">
-                        {s.schema.sections?.length || 0} sections
-                      </Typography>
-                    </Box>
+                      </Box>
+                    )}
                   </Stack>
-                  <Stack direction="row" spacing={1}>
-                    {s.type === "generated" ? (
-                      <>
+                </Stack>
+              </Stack>
+              {s.type === "generated" && (
+                <>
+                  <Divider orientation="horizontal" />
+                  <CardContent>
+                    <Stack direction={"column"} spacing={2}>
+                      <Stack direction={"row"} spacing={2}>
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -279,59 +290,42 @@ export default function Schemas() {
                             openSchemaRenameDialog();
                           }}
                           variant="contained"
-                          color="primary"
+                          color="secondary"
                           startIcon={<EditIcon />}
+                          sx={{ height: "fit-content", width: "100%" }}
                         >
-                          Confirm
+                          Rename
                         </Button>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSchemaToDelete(s);
-                            openDeleteSchemaDialog();
-                          }}
-                          sx={{
-                            color: theme.palette.text.secondary,
-                            "&:hover": {
-                              backgroundColor: `${theme.palette.error.main}20`,
-                              color: theme.palette.error.main,
-                            },
-                          }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                        <IconButton
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSchemaToShare(s.schema);
                             openShareDialog();
                           }}
-                          sx={{
-                            color: theme.palette.text.secondary,
-                            "&:hover": {
-                              backgroundColor: `${theme.palette.secondary.main}20`,
-                              color: theme.palette.secondary.main,
-                            },
-                          }}
+                          variant="contained"
+                          color="secondary"
+                          startIcon={<ShareIcon />}
+                          sx={{ width: "100%" }}
                         >
-                          <ShareIcon />
-                        </IconButton>
-                      </>
-                    ) : (
+                          Share
+                        </Button>
+                      </Stack>
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleEditSchema(s.name);
+                          setSchemaToDelete(s);
+                          openDeleteSchemaDialog();
                         }}
-                        variant="outlined"
-                        color="secondary"
+                        variant="contained"
+                        color="error"
+                        startIcon={<DeleteIcon />}
                       >
-                        View
+                        Delete
                       </Button>
-                    )}
-                  </Stack>
-                </Stack>
-              </CardContent>
+                    </Stack>
+                  </CardContent>
+                </>
+              )}
             </Card>
           ))}
         </Stack>
@@ -375,7 +369,9 @@ export default function Schemas() {
         open={deleteSchemaDialogOpen}
         onClose={closeDeleteSchemaDialog}
         onDelete={handleDeleteSchema}
-        title={`Delete Schema "${schemaToDelete?.name || ""}"?`}
+        title={`Delete Schema "${
+          schemaToDelete?.name.substring(0, 20) || ""
+        }..."?`}
       >
         Are you sure you want to delete this schema? This action cannot be
         undone.
@@ -405,11 +401,7 @@ export default function Schemas() {
         sx={{ width: "100%" }}
         autoHideDuration={5000}
       >
-        <Alert
-          onClose={closeWarning}
-          severity="warning"
-          variant="filled"
-        >
+        <Alert onClose={closeWarning} severity="warning" variant="filled">
           Editing schemas can create issues with your team's data. Only do so if
           you have permission from your lead scouter.
         </Alert>

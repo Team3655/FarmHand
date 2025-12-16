@@ -1,4 +1,4 @@
-import { Box, Stack, Typography, useMediaQuery } from "@mui/material";
+import { Box, Stack, Typography} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { ReactNode } from "react";
 
@@ -18,7 +18,6 @@ export default function PageHeader(props: PageHeaderProps) {
   const { icon, title, subtitle, trailingComponent, leadingComponent } = props;
   const theme = useTheme();
   const isWindowsXPTheme = theme.farmhandThemeId === "WindowsXPTheme";
-  const isLandscape = useMediaQuery("(orientation: landscape)");
 
   return (
     <Box
@@ -31,7 +30,7 @@ export default function PageHeader(props: PageHeaderProps) {
       }}
     >
       <Stack
-        direction={isLandscape ? "row" : "column"}
+        direction={"column"}
         alignItems="center"
         justifyContent={"space-between"}
         spacing={2}
@@ -70,11 +69,12 @@ export default function PageHeader(props: PageHeaderProps) {
           >
             {icon}
           </Box>
-          <Box>
+          <Box width={"calc(100vw - 150px)"}>
             <Typography
               variant="h4"
               sx={{
                 fontWeight: 600,
+                overflowWrap: "break-word",
                 ...(isWindowsXPTheme && {
                   fontFamily: '"Trebuchet MS", "Tahoma", sans-serif',
                   fontSize: "1.15rem",
