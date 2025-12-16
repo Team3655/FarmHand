@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   Button,
+  useMediaQuery,
 } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/DashboardRounded";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScannerRounded";
@@ -47,6 +48,7 @@ interface PinnedChart {
 }
 
 export default function LeadScoutDashboard() {
+  const isLandscape = useMediaQuery("(orientation: landscape)");
   const theme = useTheme();
   const navigate = useNavigate();
   const { settings } = useSettings();
@@ -706,34 +708,44 @@ export default function LeadScoutDashboard() {
                           },
                         }}
                       >
+                        <Box
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 3,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: iconBackgroundColor,
+                            color: iconColor,
+                          }}
+                        >
+                          {isComplete ? (
+                            <CheckCircleIcon />
+                          ) : (
+                            <ErrorOutlineIcon />
+                          )}
+                        </Box>
                         <Stack
-                          direction="row"
+                          direction={isLandscape ? "row" : "column"}
                           alignItems="center"
                           spacing={2}
-                          sx={{ flexGrow: 1 }}
+                          sx={{ flexGrow: 1, ml: 2 }}
                         >
-                          <Box
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 3,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: iconBackgroundColor,
-                              color: iconColor,
-                            }}
-                          >
-                            {isComplete ? (
-                              <CheckCircleIcon />
-                            ) : (
-                              <ErrorOutlineIcon />
-                            )}
-                          </Box>
                           <Box sx={{ flexGrow: 1 }}>
-                            <Typography variant="h6">
-                              Match {matchNum}
-                            </Typography>
+                            <Stack direction="row" spacing={1}>
+                              <Typography variant="h6">
+                                Match {matchNum}
+                              </Typography>
+                              <Chip
+                                label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
+                                color={chipColor}
+                                sx={{
+                                  fontWeight: 600,
+                                  fontFamily: theme.typography.body1,
+                                }}
+                              />
+                            </Stack>
                             {missingDeviceIDs.length > 0 && (
                               <Stack
                                 direction="row"
@@ -775,14 +787,6 @@ export default function LeadScoutDashboard() {
                               </Stack>
                             )}
                           </Box>
-                          <Chip
-                            label={`${scoutCount} / ${EXPECTED_DEVICES_COUNT} Scouts`}
-                            color={chipColor}
-                            sx={{
-                              fontWeight: 600,
-                              fontFamily: theme.typography.body1,
-                            }}
-                          />
                         </Stack>
                       </AccordionSummary>
                       <AccordionDetails
@@ -827,18 +831,18 @@ export default function LeadScoutDashboard() {
                                   }}
                                 >
                                   <Stack
-                                    direction="row"
+                                    direction={isLandscape ? "row" : "column"}
                                     alignItems="center"
                                     spacing={2}
                                   >
                                     <Box
                                       sx={{
-                                        width: 36,
-                                        height: 36,
+                                        width: "fit-content",
                                         borderRadius: 1.5,
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
+                                        px: isLandscape ? 2 : 5,
                                         backgroundColor: isReceived
                                           ? `${theme.palette.success.main}20`
                                           : `${theme.palette.error.main}20`,
@@ -851,91 +855,93 @@ export default function LeadScoutDashboard() {
                                     >
                                       {deviceId}
                                     </Box>
+                                    <Chip
+                                      label={
+                                        isReceived ? "Received" : "Missing"
+                                      }
+                                      color={isReceived ? "success" : "error"}
+                                      size="small"
+                                      sx={{ fontWeight: 600 }}
+                                    />
                                     <Box sx={{ flexGrow: 1 }}>
-                                      <Typography
-                                        variant="subtitle2"
-                                        sx={{ fontWeight: 600 }}
-                                      >
-                                        Device {deviceId}
-                                      </Typography>
-                                      {(() => {
-                                        const history =
-                                          deviceHistory.get(deviceId);
-                                        if (isReceived && deviceData) {
-                                          // Show current match data
-                                          return (
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              sx={{ mt: 0.25 }}
-                                            >
-                                              {deviceData.teamNumber
-                                                ? `Team ${deviceData.teamNumber} • `
-                                                : ""}
-                                              Match {matchNum} •{" "}
-                                              {formatTimeAgo(
-                                                deviceData.timestamp
-                                              )}
-                                            </Typography>
-                                          );
-                                        } else if (history) {
-                                          // Show last received data from history
-                                          return (
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              sx={{ mt: 0.25 }}
-                                            >
-                                              Last received:{" "}
-                                              {history.teamNumber
-                                                ? `Team ${history.teamNumber} `
-                                                : ""}
-                                              Match {history.matchNumber},{" "}
-                                              {formatTimeAgo(history.timestamp)}
-                                            </Typography>
-                                          );
-                                        } else {
-                                          // No data ever received
-                                          return (
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              sx={{ mt: 0.25 }}
-                                            >
-                                              No data received
-                                            </Typography>
-                                          );
-                                        }
-                                      })()}
-                                    </Box>
-                                    <Stack direction="row" spacing={1}>
-                                      <Chip
-                                        label={
-                                          isReceived ? "Received" : "Missing"
-                                        }
-                                        color={isReceived ? "success" : "error"}
-                                        size="small"
-                                        sx={{ fontWeight: 600 }}
-                                      />
-                                      {!isReceived && (
-                                        <Button
-                                          variant="outlined"
-                                          size="small"
-                                          color="primary"
-                                          onClick={() =>
-                                            navigate("/qr", {
-                                              state: { openScanner: true },
-                                            })
-                                          }
-                                          sx={{
-                                            fontWeight: 600,
-                                            borderRadius: 1.5,
-                                          }}
+                                      <Stack direction={"column"}>
+                                        <Typography
+                                          variant="subtitle2"
+                                          sx={{ fontWeight: 600 }}
                                         >
-                                          <QrCodeScannerIcon />
-                                        </Button>
-                                      )}
-                                    </Stack>
+                                          Device {deviceId}
+                                        </Typography>
+                                        {(() => {
+                                          const history =
+                                            deviceHistory.get(deviceId);
+                                          if (isReceived && deviceData) {
+                                            // Show current match data
+                                            return (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                sx={{ mt: 0.25 }}
+                                              >
+                                                {deviceData.teamNumber
+                                                  ? `Team ${deviceData.teamNumber} • `
+                                                  : ""}
+                                                Match {matchNum} •{" "}
+                                                {formatTimeAgo(
+                                                  deviceData.timestamp
+                                                )}
+                                              </Typography>
+                                            );
+                                          } else if (history) {
+                                            // Show last received data from history
+                                            return (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                sx={{ mt: 0.25 }}
+                                              >
+                                                Last received:{" "}
+                                                {history.teamNumber
+                                                  ? `Team ${history.teamNumber} `
+                                                  : ""}
+                                                Match {history.matchNumber},{" "}
+                                                {formatTimeAgo(
+                                                  history.timestamp
+                                                )}
+                                              </Typography>
+                                            );
+                                          } else {
+                                            // No data ever received
+                                            return (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                sx={{ mt: 0.25 }}
+                                              >
+                                                No data received
+                                              </Typography>
+                                            );
+                                          }
+                                        })()}
+                                      </Stack>
+                                    </Box>
+                                    {!isReceived && (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        color="primary"
+                                        onClick={() =>
+                                          navigate("/qr", {
+                                            state: { openScanner: true },
+                                          })
+                                        }
+                                        sx={{
+                                          fontWeight: 600,
+                                          borderRadius: 1.5,
+                                        }}
+                                      >
+                                        <QrCodeScannerIcon />
+                                      </Button>
+                                    )}
                                   </Stack>
                                 </Paper>
                               );
